@@ -1,4 +1,4 @@
-// Interfaz: elegir usuario → panel de una asignatura (global + temas + historial) → sesión de estudio tipo Anki.
+// Interfaz: elegir usuario → panel de una asignatura (global + temas + historial) → sesión de estudio tipo Anki → ranking con nota esperada.
 
 const $app = document.getElementById('app');
 const Q = Object.fromEntries(SUBJECTS.flatMap((s) => s.questions.map((q) => [q.id, q])));
@@ -14,6 +14,10 @@ const state = {
   current: null,     // { id, order: [índices de opciones], sel: [marcadas antes de comprobar], picked, correct }
   lastId: null,
   timer: null,
+  rankingScope: 'all', // 'all' o id de una asignatura
+  rankingSort: 'score', // 'score', 'accuracy', 'coverage', 'mature', 'reviews'
+  expandedUserId: null,
+  cachedRanking: null,
 };
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -59,6 +63,149 @@ function timeAgo(t) {
   return `hace ${Math.round(s / 86400)} d`;
 }
 
+// ---------------- Modelo de Métricas y Nota Esperada ----------------
+
+function getGradeInfo(score) {
+  if (score >= 9.0) return { text: 'Sobresaliente', cls: 'badge-sobresaliente', color: '#f59e0b' };
+  if (score >= 7.0) return { text: 'Notable', cls: 'badge-notable', color: '#15803d' };
+  if (score >= 5.0) return { text: 'Aprobado', cls: 'badge-aprobado', color: '#2563eb' };
+  return { text: 'Suspenso', cls: 'badge-suspenso', color: '#b91c1c' };
+}
+
+function calcUserMetrics(user, subjectOrAll) {
+  const isAll = subjectOrAll === 'all';
+  const questions = isAll ? SUBJECTS.flatMap((s) => s.questions) : subjectOrAll.questions;
+  const total = questions.length;
+  if (!total) return null;
+
+  const qSet = new Set(questions.map((q) => q.id));
+  const cards = user.cards || {};
+  const logs = (user.log || []).filter((l) => qSet.has(l.qid));
+
+  const totalReviews = logs.length;
+  const correctReviews = logs.filter((l) => l.correct).length;
+  const acc = totalReviews > 0 ? (correctReviews / totalReviews) : null;
+  const accFactor = acc !== null ? Math.max(0.75, Math.min(1.10, acc / 0.80)) : 0.85;
+
+  const midnight = new Date().setHours(0, 0, 0, 0);
+  const todayReviews = logs.filter((l) => l.t >= midnight).length;
+  const lastActive = logs.length ? Math.max(...logs.map((l) => l.t)) : null;
+
+  let studied = 0, mature = 0, young = 0, learning = 0, unseen = 0, sumP = 0;
+
+  for (const q of questions) {
+    const c = cards[q.id];
+    let p = 0;
+    if (c && c.state !== 'new') {
+      studied++;
+      if (c.state === 'learning' || c.state === 'relearning') {
+        learning++;
+        p = 0.50 * accFactor;
+      } else if (c.state === 'review') {
+        const lapseMod = Math.max(0.70, 1 - 0.04 * (c.lapses || 0));
+        if (c.ivl >= 21) {
+          mature++;
+          p = 0.94 * lapseMod * accFactor;
+        } else {
+          young++;
+          const ivlProg = Math.min(1, Math.max(0, c.ivl / 21));
+          p = (0.72 + 0.20 * ivlProg) * lapseMod * accFactor;
+        }
+      }
+    } else {
+      const qLogs = logs.filter((l) => l.qid === q.id);
+      if (qLogs.length > 0) {
+        studied++;
+        const last = qLogs[qLogs.length - 1];
+        p = (last.correct ? 0.60 : 0.25) * accFactor;
+      } else {
+        unseen++;
+        p = 0.0;
+      }
+    }
+    sumP += Math.max(0, Math.min(0.98, p));
+  }
+
+  const rawScore = (sumP / total) * 10;
+  const expectedScore = Math.round(rawScore * 10) / 10;
+  const coverage = Math.round((studied / total) * 100);
+  const accuracyPct = acc !== null ? Math.round(acc * 100) : null;
+  const grade = getGradeInfo(expectedScore);
+
+  let topicsBreakdown = [];
+  if (!isAll && subjectOrAll.topics) {
+    topicsBreakdown = subjectOrAll.topics.map((t) => {
+      const tQuestions = subjectOrAll.questions.filter((q) => q.topic === t.id);
+      let tSumP = 0, tStudied = 0, tMature = 0, tYoung = 0, tLearning = 0;
+      for (const tq of tQuestions) {
+        const c = cards[tq.id];
+        let p = 0;
+        if (c && c.state !== 'new') {
+          tStudied++;
+          if (c.state === 'learning' || c.state === 'relearning') {
+            tLearning++;
+            p = 0.50 * accFactor;
+          } else if (c.state === 'review') {
+            const lapseMod = Math.max(0.70, 1 - 0.04 * (c.lapses || 0));
+            const ivlProg = Math.min(1, Math.max(0, c.ivl / 21));
+            if (c.ivl >= 21) {
+              tMature++;
+              p = 0.94 * lapseMod * accFactor;
+            } else {
+              tYoung++;
+              p = (0.72 + 0.20 * ivlProg) * lapseMod * accFactor;
+            }
+          }
+        }
+        tSumP += Math.max(0, Math.min(0.98, p));
+      }
+      const tScore = tQuestions.length ? Math.round(((tSumP / tQuestions.length) * 10) * 10) / 10 : 0;
+      return {
+        id: t.id,
+        name: t.name,
+        total: tQuestions.length,
+        studied: tStudied,
+        mature: tMature,
+        young: tYoung,
+        learning: tLearning,
+        score: tScore,
+        grade: getGradeInfo(tScore),
+      };
+    });
+  }
+
+  // Diagnóstico / consejo según métricas
+  let advice = '';
+  if (coverage < 50) {
+    advice = `Has visto el ${coverage}% del temario. Desbloquea las ${total - studied} preguntas restantes para poder aspirar a aprobar el examen.`;
+  } else if (coverage < 100) {
+    advice = `Llevas un ${coverage}% de cobertura. Te faltan ${total - studied} preguntas nuevas por estudiar para consolidar la materia.`;
+  } else if (mature < total * 0.5) {
+    advice = `¡Has cubierto el 100% de las preguntas! Ahora consolida las ${young + learning} tarjetas en repaso para convertir tu ${expectedScore}/10 en Sobresaliente.`;
+  } else {
+    advice = `¡Gran preparación! Tienes ${mature} tarjetas completamente dominadas (≥21 días) con un acierto del ${accuracyPct}%. Mantén los repasos periódicos.`;
+  }
+
+  return {
+    expectedScore,
+    grade,
+    coverage,
+    total,
+    studied,
+    mature,
+    young,
+    learning,
+    unseen,
+    accuracyPct,
+    totalReviews,
+    correctReviews,
+    todayReviews,
+    lastActive,
+    topicsBreakdown,
+    advice,
+  };
+}
+
 // ---------------- Usuarios ----------------
 
 async function showUsers() {
@@ -66,7 +213,13 @@ async function showUsers() {
   state.user = null;
   try { state.users = await call('GET', '/api/users'); } catch (e) { toast(e.message); }
   $app.innerHTML = `
-    <div class="header"><h1>🧠 Lewis Quiz</h1><div class="muted">${SUBJECTS.map((s) => esc(s.name)).join(' · ')} · repaso espaciado tipo Anki</div></div>
+    <div class="header row spread">
+      <div>
+        <h1>🧠 Lewis Quiz</h1>
+        <div class="muted">${SUBJECTS.map((s) => esc(s.name)).join(' · ')} · repaso espaciado tipo Anki</div>
+      </div>
+      <button class="btn-ranking" id="public-ranking-btn">🏆 Ranking de la clase</button>
+    </div>
     <div class="card stack">
       <h2 style="margin-top:0">¿Quién eres?</h2>
       ${state.users.length ? `<div class="users">${state.users.map((u) => `<button data-user="${u.id}">👤 ${esc(u.name)}</button>`).join('')}</div>` : '<p class="muted">Aún no hay usuarios. Crea el tuyo:</p>'}
@@ -76,6 +229,8 @@ async function showUsers() {
       </form>
     </div>`;
   $app.querySelectorAll('[data-user]').forEach((b) => (b.onclick = () => openUser(b.dataset.user)));
+  const pubRank = $app.querySelector('#public-ranking-btn');
+  if (pubRank) pubRank.onclick = () => showRanking();
   $app.querySelector('#new-user').onsubmit = async (e) => {
     e.preventDefault();
     try {
@@ -125,6 +280,9 @@ function showDashboard() {
   const today = log.filter((e) => e.t >= midnight);
   const acc = accuracy(log);
 
+  // Métricas del usuario actual para la asignatura activa
+  const metrics = calcUserMetrics(user, subject);
+
   const topicRows = subject.topics.map((t) => {
     const c = SRS.counts(scopeIds(t.id), user.cards, now);
     const a = accuracy(log.filter((e) => Q[e.qid]?.topic === t.id));
@@ -148,10 +306,32 @@ function showDashboard() {
   $app.innerHTML = `
     <div class="header row spread">
       <div><h1>🧠 Lewis Quiz</h1><div class="muted small">${esc(subject.name)}</div></div>
-      <div class="row"><span>👤 <b>${esc(user.name)}</b></span><button class="link" id="switch">Cambiar</button></div>
+      <div class="row">
+        <button class="btn-ranking" id="btn-ranking">🏆 Ranking</button>
+        <span>👤 <b>${esc(user.name)}</b></span>
+        <button class="link" id="switch">Cambiar</button>
+      </div>
     </div>
     ${SUBJECTS.length > 1 ? `<div class="tabs">${SUBJECTS.map((s) =>
       `<button data-subject="${s.id}" class="${s === subject ? 'active' : ''}">${esc(s.name)}</button>`).join('')}</div>` : ''}
+
+    <div class="user-rank-banner" id="banner-ranking" title="Ver ranking y comparativa de notas">
+      <div class="left">
+        <div class="rank-badge">🏆</div>
+        <div>
+          <div style="font-weight:700">Nota esperada en el examen: <span style="font-size:1.15rem;color:${metrics.grade.color}">${metrics.expectedScore} / 10</span>
+            <span class="badge-grade ${metrics.grade.cls}">${metrics.grade.text}</span>
+          </div>
+          <div class="small muted" style="margin-top:2px">
+            Cobertura: <b>${metrics.coverage}%</b> (${metrics.studied}/${metrics.total} preguntas) · Acierto: <b>${metrics.accuracyPct !== null ? metrics.accuracyPct + '%' : '–'}</b>
+          </div>
+          <div class="score-meter" style="max-width:260px;margin-top:6px">
+            <div class="score-meter-fill" style="width:${Math.min(100, metrics.expectedScore * 10)}%;background:${metrics.grade.color}"></div>
+          </div>
+        </div>
+      </div>
+      <button class="primary" style="padding:6px 12px;font-size:.88rem">Ver Ranking →</button>
+    </div>
 
     <div class="card">
       <div class="row spread" style="align-items:flex-start">
@@ -181,7 +361,7 @@ function showDashboard() {
     </ul></div>` : '<p class="muted small">Todavía no has respondido ninguna pregunta.</p>'}
 
     <details class="small muted" style="margin-top:24px">
-      <summary>¿Cómo funciona?</summary>
+      <summary>¿Cómo funciona el repaso espaciado?</summary>
       <p>Funciona como Anki (algoritmo SM-2). Cada pregunta es una tarjeta. Las nuevas pasan por unos pasos cortos (1 min y 10 min). Cuando las aciertas, pasan a repaso con intervalos en días que crecen: 1 d → ~2–3 d → ~6 d → ~2 semanas…</p>
       <p>Al acertar eliges lo fácil que te ha resultado. <b>Difícil</b> alarga poco el intervalo y baja la «facilidad» de la tarjeta. <b>Bien</b> lo multiplica por la facilidad (~2,5×). <b>Fácil</b> lo alarga aún más y sube la facilidad. Si fallas, la tarjeta vuelve a aprendizaje (Otra vez) y su facilidad baja. Si aciertas de chiripa, pulsa también Otra vez.</p>
       <p>Las opciones se barajan cada vez para que no memorices la posición.</p>
@@ -197,6 +377,8 @@ function showDashboard() {
     showDashboard();
   }));
   $app.querySelectorAll('[data-scope]').forEach((b) => (b.onclick = () => startStudy(b.dataset.scope === 'all' ? 'all' : Number(b.dataset.scope))));
+  $app.querySelector('#btn-ranking').onclick = () => showRanking();
+  $app.querySelector('#banner-ranking').onclick = () => showRanking();
   $app.querySelector('#switch').onclick = () => { localStorage.removeItem('lewis-quiz-user'); showUsers(); };
   $app.querySelector('#reset').onclick = async () => {
     if (!confirm(`¿Borrar todo el progreso e historial de ${user.name}?`)) return;
@@ -209,6 +391,321 @@ function showDashboard() {
     localStorage.removeItem('lewis-quiz-user');
     showUsers();
   };
+}
+
+// ---------------- Ranking ----------------
+
+async function showRanking() {
+  stopTimer();
+  $app.innerHTML = `
+    <div class="header row spread">
+      <button class="link" id="rank-back">← Volver</button>
+      <span class="tag">🏆 Clasificación</span>
+    </div>
+    <div class="card" style="text-align:center;padding:40px"><p class="muted">Cargando métricas de todos los alumnos…</p></div>`;
+  $app.querySelector('#rank-back').onclick = () => (state.user ? showDashboard() : showUsers());
+
+  let allUsersData = [];
+  try {
+    allUsersData = await call('GET', '/api/ranking');
+    state.cachedRanking = allUsersData;
+  } catch (e) {
+    toast('Error al cargar ranking: ' + e.message);
+    allUsersData = state.cachedRanking || (state.user ? [state.user] : []);
+  }
+
+  // Si el usuario actual tiene datos actualizados en memoria más recientes, incorporarlos
+  if (state.user) {
+    const idx = allUsersData.findIndex((u) => u.id === state.user.id);
+    if (idx >= 0) allUsersData[idx] = state.user;
+    else allUsersData.push(state.user);
+  }
+
+  renderRankingView(allUsersData);
+}
+
+function renderRankingView(allUsersData) {
+  const currentScope = state.rankingScope; // 'all' o subjectId
+  const selectedSubject = currentScope === 'all' ? 'all' : (SUBJECTS.find((s) => s.id === currentScope) || 'all');
+  const scopeLabel = currentScope === 'all' ? 'Todas las asignaturas' : selectedSubject.name;
+
+  // Calcular métricas para todos los usuarios en el ámbito actual
+  const usersWithMetrics = allUsersData.map((u) => {
+    const m = calcUserMetrics(u, selectedSubject);
+    return {
+      id: u.id,
+      name: u.name,
+      createdAt: u.createdAt,
+      metrics: m,
+      isMe: state.user && state.user.id === u.id,
+    };
+  });
+
+  // Ordenación
+  const sortKey = state.rankingSort;
+  usersWithMetrics.sort((a, b) => {
+    if (sortKey === 'score') {
+      return b.metrics.expectedScore - a.metrics.expectedScore ||
+        (b.metrics.accuracyPct || 0) - (a.metrics.accuracyPct || 0) ||
+        b.metrics.mature - a.metrics.mature ||
+        b.metrics.totalReviews - a.metrics.totalReviews;
+    }
+    if (sortKey === 'accuracy') {
+      return (b.metrics.accuracyPct || 0) - (a.metrics.accuracyPct || 0) ||
+        b.metrics.expectedScore - a.metrics.expectedScore;
+    }
+    if (sortKey === 'coverage') {
+      return b.metrics.coverage - a.metrics.coverage ||
+        b.metrics.expectedScore - a.metrics.expectedScore;
+    }
+    if (sortKey === 'mature') {
+      return b.metrics.mature - a.metrics.mature ||
+        b.metrics.expectedScore - a.metrics.expectedScore;
+    }
+    if (sortKey === 'reviews') {
+      return b.metrics.totalReviews - a.metrics.totalReviews ||
+        b.metrics.expectedScore - a.metrics.expectedScore;
+    }
+    return 0;
+  });
+
+  // Asignar puestos
+  usersWithMetrics.forEach((u, i) => { u.rank = i + 1; });
+
+  const myEntry = usersWithMetrics.find((u) => u.isMe);
+
+  // Podio Top 3
+  const top1 = usersWithMetrics[0];
+  const top2 = usersWithMetrics[1];
+  const top3 = usersWithMetrics[2];
+
+  let podiumHtml = '';
+  if (usersWithMetrics.length >= 2) {
+    podiumHtml = `
+      <div class="podium">
+        ${top2 ? `
+          <div class="podium-slot second ${top2.isMe ? 'is-me' : ''}" data-expand="${top2.id}">
+            <div class="podium-crown">🥈</div>
+            <div class="podium-rank">2º Puesto</div>
+            <div class="podium-name">${esc(top2.name)} ${top2.isMe ? '<span class="badge-you">Tú</span>' : ''}</div>
+            <div class="podium-score" style="color:${top2.metrics.grade.color}">${top2.metrics.expectedScore}<span style="font-size:.85rem;color:var(--muted)">/10</span></div>
+            <div style="margin-top:4px"><span class="badge-grade ${top2.metrics.grade.cls}">${top2.metrics.grade.text}</span></div>
+            <div class="small muted" style="margin-top:6px">${top2.metrics.coverage}% visto · ${top2.metrics.totalReviews} reps</div>
+          </div>` : ''}
+        ${top1 ? `
+          <div class="podium-slot first ${top1.isMe ? 'is-me' : ''}" data-expand="${top1.id}">
+            <div class="podium-crown">👑 🥇</div>
+            <div class="podium-rank" style="color:#b45309">1º Puesto</div>
+            <div class="podium-name" style="font-size:1.15rem">${esc(top1.name)} ${top1.isMe ? '<span class="badge-you">Tú</span>' : ''}</div>
+            <div class="podium-score" style="color:${top1.metrics.grade.color};font-size:1.8rem">${top1.metrics.expectedScore}<span style="font-size:1rem;color:var(--muted)">/10</span></div>
+            <div style="margin-top:4px"><span class="badge-grade ${top1.metrics.grade.cls}">${top1.metrics.grade.text}</span></div>
+            <div class="small muted" style="margin-top:6px">${top1.metrics.coverage}% visto · ${top1.metrics.totalReviews} reps</div>
+          </div>` : ''}
+        ${top3 ? `
+          <div class="podium-slot third ${top3.isMe ? 'is-me' : ''}" data-expand="${top3.id}">
+            <div class="podium-crown">🥉</div>
+            <div class="podium-rank">3º Puesto</div>
+            <div class="podium-name">${esc(top3.name)} ${top3.isMe ? '<span class="badge-you">Tú</span>' : ''}</div>
+            <div class="podium-score" style="color:${top3.metrics.grade.color}">${top3.metrics.expectedScore}<span style="font-size:.85rem;color:var(--muted)">/10</span></div>
+            <div style="margin-top:4px"><span class="badge-grade ${top3.metrics.grade.cls}">${top3.metrics.grade.text}</span></div>
+            <div class="small muted" style="margin-top:6px">${top3.metrics.coverage}% visto · ${top3.metrics.totalReviews} reps</div>
+          </div>` : ''}
+      </div>`;
+  }
+
+  // Lista de usuarios
+  const listRows = usersWithMetrics.map((u) => {
+    const isExpanded = state.expandedUserId === u.id;
+    const m = u.metrics;
+    const medalCls = u.rank === 1 ? 'medal-1' : u.rank === 2 ? 'medal-2' : u.rank === 3 ? 'medal-3' : '';
+    const medalIcon = u.rank === 1 ? '🥇' : u.rank === 2 ? '🥈' : u.rank === 3 ? '🥉' : `#${u.rank}`;
+
+    let breakdownHtml = '';
+    if (isExpanded) {
+      const topicGrid = m.topicsBreakdown && m.topicsBreakdown.length ? `
+        <div style="margin-top:12px">
+          <div class="small muted" style="font-weight:700;text-transform:uppercase">Nota y dominio por temas</div>
+          <div class="topic-breakdown-grid">
+            ${m.topicsBreakdown.map((t) => `
+              <div class="topic-mini-card">
+                <div class="title" title="${esc(t.name)}">${esc(t.name)}</div>
+                <div class="row spread" style="align-items:baseline">
+                  <span style="font-weight:700;font-size:1.1rem;color:${t.grade.color}">${t.score} <small style="font-size:.75rem;color:var(--muted)">/10</small></span>
+                  <span class="badge-grade ${t.grade.cls}" style="font-size:.7rem">${t.grade.text}</span>
+                </div>
+                <div class="small muted" style="margin-top:4px">
+                  ${t.studied}/${t.total} vistas (${Math.round((t.studied / t.total) * 100)}%)
+                </div>
+                <div class="score-meter" style="margin-top:4px;height:4px">
+                  <div class="score-meter-fill" style="width:${Math.min(100, t.score * 10)}%;background:${t.grade.color}"></div>
+                </div>
+              </div>`).join('')}
+          </div>
+        </div>` : '';
+
+      breakdownHtml = `
+        <div class="user-detail-card">
+          <div class="row spread" style="align-items:flex-start">
+            <div>
+              <b style="font-size:1rem">${esc(u.name)}</b>
+              <div class="small muted" style="margin-top:2px">
+                ${m.lastActive ? `Último repaso: ${timeAgo(m.lastActive)}` : 'Sin actividad registrada'}
+                ${m.todayReviews > 0 ? ` · 🔥 <b>${m.todayReviews}</b> respuestas hoy` : ''}
+              </div>
+            </div>
+            <span class="badge-grade ${m.grade.cls}">${m.grade.text}</span>
+          </div>
+
+          <div class="stats" style="margin-top:12px">
+            <div class="card stat" style="padding:10px 4px">
+              <b style="color:${m.grade.color}">${m.expectedScore}<small style="font-size:.8rem;color:var(--muted)">/10</small></b>
+              <span class="muted small">nota esperada</span>
+            </div>
+            <div class="card stat" style="padding:10px 4px">
+              <b>${m.coverage}%</b>
+              <span class="muted small">${m.studied}/${m.total} vistas</span>
+            </div>
+            <div class="card stat" style="padding:10px 4px">
+              <b>${m.accuracyPct !== null ? m.accuracyPct + '%' : '–'}</b>
+              <span class="muted small">acierto global</span>
+            </div>
+          </div>
+
+          <div class="banner" style="margin-top:12px;margin-bottom:0">
+            💡 <b>Diagnóstico para el examen:</b> ${esc(m.advice)}
+          </div>
+
+          ${topicGrid}
+        </div>`;
+    }
+
+    return `
+      <div>
+        <div class="ranking-item ${u.isMe ? 'is-me' : ''}" data-expand="${u.id}">
+          <div class="rank-num ${medalCls}">${medalIcon}</div>
+          <div class="ranking-main-info">
+            <div class="ranking-user-name">
+              <span>${esc(u.name)}</span>
+              ${u.isMe ? '<span class="badge-you">Tú</span>' : ''}
+            </div>
+            <div class="ranking-meta">
+              <span>📚 Cobertura: <b>${m.coverage}%</b> (${m.studied}/${m.total})</span>
+              <span>🧠 <b>${m.mature}</b> dominadas</span>
+              <span>📈 <b>${m.accuracyPct !== null ? m.accuracyPct + '%' : '–'}</b> acierto</span>
+              <span>⚡ <b>${m.totalReviews}</b> reps</span>
+              ${m.todayReviews > 0 ? `<span style="color:var(--review)">🔥 ${m.todayReviews} hoy</span>` : ''}
+            </div>
+            <div class="bar" style="margin-top:6px;max-width:320px" title="Verde: dominadas · verde claro: en repaso · rojo: aprendiendo · gris: nuevas">
+              <span style="width:${(100 * m.mature) / m.total}%;background:var(--review)"></span>
+              <span style="width:${(100 * m.young) / m.total}%;background:color-mix(in srgb, var(--review) 45%, transparent)"></span>
+              <span style="width:${(100 * m.learning) / m.total}%;background:var(--learn)"></span>
+            </div>
+          </div>
+          <div class="ranking-score-box">
+            <div class="ranking-score-value" style="color:${m.grade.color}">
+              ${m.expectedScore}<span class="ranking-score-denom">/10</span>
+            </div>
+            <span class="badge-grade ${m.grade.cls}">${m.grade.text}</span>
+            <div style="font-size:.75rem;color:var(--muted);margin-top:4px">
+              ${isExpanded ? '▲ Ocultar' : '▼ Detalle'}
+            </div>
+          </div>
+        </div>
+        ${breakdownHtml}
+      </div>`;
+  }).join('');
+
+  $app.innerHTML = `
+    <div class="header row spread">
+      <div>
+        <h1>🏆 Ranking de la Clase</h1>
+        <div class="muted small">${esc(scopeLabel)} · predicción de nota en el examen</div>
+      </div>
+      <button class="link" id="rank-back-btn">← Volver al estudio</button>
+    </div>
+
+    <div class="tabs">
+      <button data-rank-scope="all" class="${currentScope === 'all' ? 'active' : ''}">🌍 General (Todas)</button>
+      ${SUBJECTS.map((s) => `
+        <button data-rank-scope="${s.id}" class="${currentScope === s.id ? 'active' : ''}">${esc(s.name)}</button>
+      `).join('')}
+    </div>
+
+    ${myEntry ? `
+      <div class="user-rank-banner" style="cursor:default">
+        <div class="left">
+          <div class="rank-badge">${myEntry.rank === 1 ? '🥇' : myEntry.rank === 2 ? '🥈' : myEntry.rank === 3 ? '🥉' : '#' + myEntry.rank}</div>
+          <div>
+            <div style="font-weight:700">Tu posición: <b>#${myEntry.rank}</b> de ${usersWithMetrics.length} alumnos</div>
+            <div class="small muted">
+              Nota esperada: <b style="color:${myEntry.metrics.grade.color};font-size:1.05rem">${myEntry.metrics.expectedScore}/10</b>
+              <span class="badge-grade ${myEntry.metrics.grade.cls}">${myEntry.metrics.grade.text}</span> ·
+              Cobertura: <b>${myEntry.metrics.coverage}%</b> · Acierto: <b>${myEntry.metrics.accuracyPct !== null ? myEntry.metrics.accuracyPct + '%' : '–'}</b>
+            </div>
+          </div>
+        </div>
+        <button id="my-study-btn" class="primary" style="padding:6px 14px">Estudiar ahora</button>
+      </div>` : ''}
+
+    ${podiumHtml}
+
+    <div class="filter-bar">
+      <div class="small muted"><b>${usersWithMetrics.length}</b> alumnos registrados</div>
+      <div class="row" style="gap:6px">
+        <span class="small muted">Ordenar por:</span>
+        <select id="rank-sort-select" class="sort-select">
+          <option value="score" ${sortKey === 'score' ? 'selected' : ''}>🎯 Nota esperada</option>
+          <option value="accuracy" ${sortKey === 'accuracy' ? 'selected' : ''}>📈 Tasa de acierto</option>
+          <option value="coverage" ${sortKey === 'coverage' ? 'selected' : ''}>📚 Cobertura del temario</option>
+          <option value="mature" ${sortKey === 'mature' ? 'selected' : ''}>🧠 Tarjetas dominadas</option>
+          <option value="reviews" ${sortKey === 'reviews' ? 'selected' : ''}>⚡ Repasos totales</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="ranking-list">${listRows}</div>
+
+    <details class="small muted" style="margin-top:28px">
+      <summary><b>¿Cómo se calcula la nota esperada en el examen?</b></summary>
+      <div style="margin-top:8px;line-height:1.6">
+        <p>La nota esperada se calcula mediante un <b>modelo probabilístico de retención</b> que evalúa cada pregunta del temario:</p>
+        <ul>
+          <li><b>Preguntas no vistas (0 puntos):</b> Si un tema no ha sido estudiado, su aportación a la nota del examen es nula. No es posible aprobar sin cobertura mínima.</li>
+          <li><b>Tarjetas maduras (≥21 días, ~94% retención):</b> Preguntas consolidadas en memoria a largo plazo gracias a repasos espaciados continuados.</li>
+          <li><b>Tarjetas jóvenes (1 a 20 días, ~72%–90% retención):</b> Preguntas en fase de afianzamiento. Su probabilidad sube conforme el intervalo crece.</li>
+          <li><b>Tarjetas en aprendizaje / reaprendizaje (~50% retención):</b> Pasos cortos iniciales o tras haber fallado recientemente.</li>
+          <li><b>Factor de precisión personal:</b> Se modula en función de tu tasa histórica de acierto en la materia (premia la constancia sin fallos).</li>
+        </ul>
+        <p><b>Escala académica:</b> Suspenso (&lt; 5,0) · Aprobado (5,0–6,9) · Notable (7,0–8,9) · Sobresaliente (9,0–10,0).</p>
+      </div>
+    </details>`;
+
+  $app.querySelector('#rank-back-btn').onclick = () => (state.user ? showDashboard() : showUsers());
+  const myStudy = $app.querySelector('#my-study-btn');
+  if (myStudy) myStudy.onclick = showDashboard;
+
+  $app.querySelectorAll('[data-rank-scope]').forEach((b) => {
+    b.onclick = () => {
+      state.rankingScope = b.dataset.rankScope;
+      renderRankingView(allUsersData);
+    };
+  });
+
+  const sortSelect = $app.querySelector('#rank-sort-select');
+  if (sortSelect) {
+    sortSelect.onchange = (e) => {
+      state.rankingSort = e.target.value;
+      renderRankingView(allUsersData);
+    };
+  }
+
+  $app.querySelectorAll('[data-expand]').forEach((el) => {
+    el.onclick = () => {
+      const uid = el.dataset.expand;
+      state.expandedUserId = state.expandedUserId === uid ? null : uid;
+      renderRankingView(allUsersData);
+    };
+  });
 }
 
 // ---------------- Estudio ----------------

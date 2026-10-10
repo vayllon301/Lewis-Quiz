@@ -90,7 +90,221 @@
     .toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--bad); color: #fff; padding: 10px 16px; border-radius: 10px; }
     code { font: .9em ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--accent-soft); padding: 1px 5px; border-radius: 5px; }
     details summary { cursor: pointer; }
-    @media (max-width: 520px) {
+
+    /* Ranking & Métricas */
+    .btn-ranking { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+    .btn-ranking:hover { background: var(--accent); color: #fff; }
+
+    .user-rank-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 14px 18px;
+      border-radius: var(--radius);
+      background: color-mix(in srgb, var(--accent) 8%, var(--card));
+      border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--line));
+      margin-bottom: 18px;
+      cursor: pointer;
+      transition: border-color .15s ease, transform .15s ease;
+    }
+    .user-rank-banner:hover {
+      border-color: var(--accent);
+      transform: translateY(-1px);
+    }
+    .user-rank-banner .left { display: flex; align-items: center; gap: 14px; }
+    .user-rank-banner .rank-badge {
+      font-size: 1.35rem;
+      font-weight: 800;
+      background: var(--card);
+      border: 1px solid var(--line);
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* Podio visual (Top 3) */
+    .podium {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin: 20px 0 24px;
+      align-items: flex-end;
+    }
+    .podium-slot {
+      text-align: center;
+      padding: 16px 10px;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background: var(--card);
+      position: relative;
+      transition: transform .15s ease, box-shadow .15s ease;
+      cursor: pointer;
+    }
+    .podium-slot:hover { transform: translateY(-3px); box-shadow: 0 4px 14px rgba(0,0,0,0.06); }
+    .podium-slot.first {
+      order: 2;
+      border-color: #f59e0b;
+      background: linear-gradient(180deg, color-mix(in srgb, #f59e0b 14%, var(--card)) 0%, var(--card) 100%);
+      padding-top: 24px;
+      padding-bottom: 24px;
+    }
+    .podium-slot.second {
+      order: 1;
+      border-color: #94a3b8;
+      background: linear-gradient(180deg, color-mix(in srgb, #94a3b8 10%, var(--card)) 0%, var(--card) 100%);
+    }
+    .podium-slot.third {
+      order: 3;
+      border-color: #d97706;
+      background: linear-gradient(180deg, color-mix(in srgb, #d97706 10%, var(--card)) 0%, var(--card) 100%);
+    }
+    .podium-slot.is-me {
+      box-shadow: 0 0 0 2px var(--accent);
+    }
+    .podium-crown { font-size: 2rem; line-height: 1; margin-bottom: 4px; }
+    .podium-rank { font-size: 0.8rem; font-weight: 700; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; }
+    .podium-name { font-weight: 700; font-size: 1.05rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 6px; }
+    .podium-score { font-size: 1.55rem; font-weight: 800; line-height: 1.1; }
+
+    /* Calificaciones / Badges */
+    .badge-grade {
+      display: inline-block;
+      font-size: .75rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 99px;
+      text-transform: uppercase;
+      letter-spacing: .02em;
+    }
+    .badge-sobresaliente { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+    .badge-notable { background: var(--ok-bg); color: var(--ok); border: 1px solid color-mix(in srgb, var(--ok) 30%, transparent); }
+    .badge-aprobado { background: var(--accent-soft); color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); }
+    .badge-suspenso { background: var(--bad-bg); color: var(--bad); border: 1px solid color-mix(in srgb, var(--bad) 30%, transparent); }
+
+    @media (prefers-color-scheme: dark) {
+      .badge-sobresaliente { background: #3b2808; color: #fbbf24; border-color: #78350f; }
+    }
+
+    .badge-you {
+      font-size: .65rem;
+      background: var(--accent);
+      color: #fff;
+      padding: 2px 7px;
+      border-radius: 99px;
+      font-weight: 700;
+      margin-left: 6px;
+      vertical-align: middle;
+      text-transform: uppercase;
+    }
+
+    /* Barra de nota (0-10) */
+    .score-meter {
+      height: 6px;
+      background: var(--line);
+      border-radius: 99px;
+      overflow: hidden;
+      margin-top: 6px;
+    }
+    .score-meter-fill {
+      height: 100%;
+      border-radius: 99px;
+      transition: width .3s ease;
+    }
+
+    /* Tabla / Lista de ranking */
+    .ranking-list { display: flex; flex-direction: column; gap: 10px; }
+    .ranking-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      border-radius: var(--radius);
+      background: var(--card);
+      border: 1px solid var(--line);
+      transition: border-color .15s ease, background-color .15s ease;
+      cursor: pointer;
+    }
+    .ranking-item:hover { border-color: var(--accent); }
+    .ranking-item.is-me {
+      background: color-mix(in srgb, var(--accent) 6%, var(--card));
+      border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+    }
+    .rank-num {
+      font-size: 1.15rem;
+      font-weight: 800;
+      width: 34px;
+      text-align: center;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+    .rank-num.medal-1 { color: #f59e0b; font-size: 1.45rem; }
+    .rank-num.medal-2 { color: #94a3b8; font-size: 1.35rem; }
+    .rank-num.medal-3 { color: #d97706; font-size: 1.35rem; }
+
+    .ranking-main-info { flex: 1; min-width: 0; }
+    .ranking-user-name { font-weight: 600; font-size: 1rem; display: flex; align-items: center; gap: 6px; }
+    .ranking-meta { font-size: .82rem; color: var(--muted); display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+    .ranking-score-box { text-align: right; flex-shrink: 0; }
+    .ranking-score-value { font-size: 1.35rem; font-weight: 800; }
+    .ranking-score-denom { font-size: .85rem; color: var(--muted); font-weight: 500; }
+
+    /* Detalle expandido del usuario */
+    .user-detail-card {
+      margin-top: -6px;
+      margin-bottom: 6px;
+      padding: 16px;
+      border-radius: 0 0 var(--radius) var(--radius);
+      border: 1px solid var(--line);
+      border-top: 0;
+      background: color-mix(in srgb, var(--bg) 50%, var(--card));
+      animation: fadeIn .15s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
+    .topic-breakdown-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .topic-mini-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px;
+      font-size: .85rem;
+    }
+    .topic-mini-card .title { font-weight: 600; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .sort-select {
+      font: inherit;
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: var(--card);
+      color: var(--text);
+    }
+
+    @media (max-width: 580px) {
+      .podium { gap: 6px; }
+      .podium-slot { padding: 12px 6px; }
+      .podium-score { font-size: 1.2rem; }
+      .ranking-item { padding: 10px 12px; gap: 10px; }
+      .ranking-score-value { font-size: 1.15rem; }
+      .topic-breakdown-grid { grid-template-columns: 1fr; }
       .grades { grid-template-columns: repeat(2, 1fr); }
       .topic { flex-wrap: wrap; }
       .topic button { width: 100%; }

@@ -8,6 +8,21 @@ const path = require('path');
 const { handle } = require('./lib/handler');
 const { fileStore, redisStore } = require('./lib/stores');
 
+// Cargar .env.local si existe para facilitar desarrollo local con Redis
+const envFile = path.join(__dirname, '.env.local');
+if (fs.existsSync(envFile)) {
+  fs.readFileSync(envFile, 'utf8').split('\n').forEach((l) => {
+    const trimmed = l.trim();
+    if (!trimmed || trimmed.startsWith('#')) return;
+    const idx = trimmed.indexOf('=');
+    if (idx > 0) {
+      const k = trimmed.slice(0, idx).trim();
+      const v = trimmed.slice(idx + 1).trim().replace(/^['"]|['"]$/g, '');
+      if (!process.env[k]) process.env[k] = v;
+    }
+  });
+}
+
 const PORT = Number(process.env.PORT) || 4321;
 const HOST = process.env.HOST || '127.0.0.1';
 const PUBLIC_DIR = path.join(__dirname, 'public');
