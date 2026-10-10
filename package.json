@@ -1,0 +1,12 @@
+{
+  "name": "lewis-quiz",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Repaso espaciado tipo Anki para Statistical Programming",
+  "scripts": {
+    "start": "node dev-server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
