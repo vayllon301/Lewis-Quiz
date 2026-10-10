@@ -2,7 +2,7 @@
 // Fuente: capturas de "Statistical Programming Question/Chapter N", statistical_programming_questions.docx y
 // weekly_quiz_questions_answers.md (sin duplicados; en t1-11, t1-12 y t3-09 las opciones incorrectas son inventadas). `answer` es el índice de la opción correcta dentro de `options`.
 
-const TOPICS = [
+const SP_TOPICS = [
   { id: 1, name: 'Tema 1 · Introducción a la programación y Python' },
   { id: 2, name: 'Tema 2 · Fundamentos del lenguaje Python' },
   { id: 3, name: 'Tema 3 · NumPy' },
@@ -11,9 +11,7 @@ const TOPICS = [
   { id: 6, name: 'Tema 6 · Visualización' },
 ];
 
-const TF = ['True', 'False'];
-
-const QUESTIONS = [
+const SP_QUESTIONS = [
   // ---------- Tema 1 ----------
   { id: 't1-01', topic: 1, q: 'What is a software tool which translates source code into a specific target language?',
     options: ['compiler', 'bytecode', 'translator', 'assembler'], answer: 0,
@@ -200,3 +198,5 @@ const QUESTIONS = [
     options: TF, answer: 1,
     explain: 'En un histograma de densidad lo que suma 1 es el área total (altura × ancho de bin), no las alturas.' },
 ];
+
+SUBJECTS.push({ id: 'sp', name: 'Statistical Programming', topics: SP_TOPICS, questions: SP_QUESTIONS });

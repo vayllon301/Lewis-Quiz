@@ -2,7 +2,7 @@
   "name": "lewis-quiz",
   "version": "1.0.0",
   "private": true,
-  "description": "Repaso espaciado tipo Anki para Statistical Programming",
+  "description": "Repaso espaciado tipo Anki para Statistical Programming y Data Mining",
   "scripts": {
     "start": "node dev-server.js"
   },
