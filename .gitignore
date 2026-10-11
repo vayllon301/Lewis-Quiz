@@ -8,3 +8,4 @@ node_modules
 skills-lock.json
 weekly_quiz_questions_answers.md
 Docs-Preguntas-Statistical Programming
+*.log

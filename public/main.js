@@ -1,4 +1,4 @@
-// Interfaz: elegir usuario → panel de una asignatura (global + temas + historial) → sesión de estudio tipo Anki → ranking con nota esperada.
+// Interfaz: elegir usuario → panel de una asignatura (global + temas + historial) → sesión de estudio tipo Anki → ranking con nota esperada → modo test de examen.
 
 const $app = document.getElementById('app');
 const Q = Object.fromEntries(SUBJECTS.flatMap((s) => s.questions.map((q) => [q.id, q])));
@@ -7,18 +7,20 @@ const RATING_LABEL = { again: 'Otra vez', hard: 'Difícil', good: 'Bien', easy: 
 
 const state = {
   users: [],
-  user: null,        // { id, name, cards, log }
+  user: null, // { id, name, cards, log }
   subject: SUBJECTS.find((s) => s.id === localStorage.getItem('lewis-quiz-subject')) || SUBJECTS[0],
-  scope: 'all',      // 'all' o el id de un tema
-  practice: false,   // modo práctica: no cambia la programación
-  current: null,     // { id, order: [índices de opciones], sel: [marcadas antes de comprobar], picked, correct }
+  scope: 'all', // 'all' o el id de un tema
+  practice: false, // modo práctica: no cambia la programación
+  current: null, // { id, order: [índices de opciones], sel: [marcadas antes de comprobar], picked, correct }
   lastId: null,
   timer: null,
   rankingScope: 'all', // 'all' o id de una asignatura
   rankingSort: 'score', // 'score', 'accuracy', 'coverage', 'mature', 'reviews'
   expandedUserId: null,
   cachedRanking: null,
+  testMode: null, // estado de la sesión de test/examen
 };
+window.state = state;
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const rich = (s) => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>');
@@ -40,7 +42,10 @@ function toast(msg) {
   setTimeout(() => el.remove(), 3500);
 }
 
-function stopTimer() { clearInterval(state.timer); state.timer = null; }
+function stopTimer() {
+  clearInterval(state.timer);
+  state.timer = null;
+}
 
 const scopeIds = (scope) => state.subject.questions.filter((q) => scope === 'all' || q.topic === scope).map((q) => q.id);
 const scopeName = (scope) => (scope === 'all' ? `${state.subject.name} · todos los temas` : topicName(scope));
@@ -84,14 +89,19 @@ function calcUserMetrics(user, subjectOrAll) {
 
   const totalReviews = logs.length;
   const correctReviews = logs.filter((l) => l.correct).length;
-  const acc = totalReviews > 0 ? (correctReviews / totalReviews) : null;
-  const accFactor = acc !== null ? Math.max(0.75, Math.min(1.10, acc / 0.80)) : 0.85;
+  const acc = totalReviews > 0 ? correctReviews / totalReviews : null;
+  const accFactor = acc !== null ? Math.max(0.75, Math.min(1.1, acc / 0.8)) : 0.85;
 
   const midnight = new Date().setHours(0, 0, 0, 0);
   const todayReviews = logs.filter((l) => l.t >= midnight).length;
   const lastActive = logs.length ? Math.max(...logs.map((l) => l.t)) : null;
 
-  let studied = 0, mature = 0, young = 0, learning = 0, unseen = 0, sumP = 0;
+  let studied = 0,
+    mature = 0,
+    young = 0,
+    learning = 0,
+    unseen = 0,
+    sumP = 0;
 
   for (const q of questions) {
     const c = cards[q.id];
@@ -100,16 +110,16 @@ function calcUserMetrics(user, subjectOrAll) {
       studied++;
       if (c.state === 'learning' || c.state === 'relearning') {
         learning++;
-        p = 0.50 * accFactor;
+        p = 0.5 * accFactor;
       } else if (c.state === 'review') {
-        const lapseMod = Math.max(0.70, 1 - 0.04 * (c.lapses || 0));
+        const lapseMod = Math.max(0.7, 1 - 0.04 * (c.lapses || 0));
         if (c.ivl >= 21) {
           mature++;
           p = 0.94 * lapseMod * accFactor;
         } else {
           young++;
           const ivlProg = Math.min(1, Math.max(0, c.ivl / 21));
-          p = (0.72 + 0.20 * ivlProg) * lapseMod * accFactor;
+          p = (0.72 + 0.2 * ivlProg) * lapseMod * accFactor;
         }
       }
     } else {
@@ -117,7 +127,7 @@ function calcUserMetrics(user, subjectOrAll) {
       if (qLogs.length > 0) {
         studied++;
         const last = qLogs[qLogs.length - 1];
-        p = (last.correct ? 0.60 : 0.25) * accFactor;
+        p = (last.correct ? 0.6 : 0.25) * accFactor;
       } else {
         unseen++;
         p = 0.0;
@@ -136,7 +146,11 @@ function calcUserMetrics(user, subjectOrAll) {
   if (!isAll && subjectOrAll.topics) {
     topicsBreakdown = subjectOrAll.topics.map((t) => {
       const tQuestions = subjectOrAll.questions.filter((q) => q.topic === t.id);
-      let tSumP = 0, tStudied = 0, tMature = 0, tYoung = 0, tLearning = 0;
+      let tSumP = 0,
+        tStudied = 0,
+        tMature = 0,
+        tYoung = 0,
+        tLearning = 0;
       for (const tq of tQuestions) {
         const c = cards[tq.id];
         let p = 0;
@@ -144,22 +158,22 @@ function calcUserMetrics(user, subjectOrAll) {
           tStudied++;
           if (c.state === 'learning' || c.state === 'relearning') {
             tLearning++;
-            p = 0.50 * accFactor;
+            p = 0.5 * accFactor;
           } else if (c.state === 'review') {
-            const lapseMod = Math.max(0.70, 1 - 0.04 * (c.lapses || 0));
+            const lapseMod = Math.max(0.7, 1 - 0.04 * (c.lapses || 0));
             const ivlProg = Math.min(1, Math.max(0, c.ivl / 21));
             if (c.ivl >= 21) {
               tMature++;
               p = 0.94 * lapseMod * accFactor;
             } else {
               tYoung++;
-              p = (0.72 + 0.20 * ivlProg) * lapseMod * accFactor;
+              p = (0.72 + 0.2 * ivlProg) * lapseMod * accFactor;
             }
           }
         }
         tSumP += Math.max(0, Math.min(0.98, p));
       }
-      const tScore = tQuestions.length ? Math.round(((tSumP / tQuestions.length) * 10) * 10) / 10 : 0;
+      const tScore = tQuestions.length ? Math.round((tSumP / tQuestions.length) * 10 * 10) / 10 : 0;
       return {
         id: t.id,
         name: t.name,
@@ -211,12 +225,17 @@ function calcUserMetrics(user, subjectOrAll) {
 async function showUsers() {
   stopTimer();
   state.user = null;
-  try { state.users = await call('GET', '/api/users'); } catch (e) { toast(e.message); }
+  state.testMode = null;
+  try {
+    state.users = await call('GET', '/api/users');
+  } catch (e) {
+    toast(e.message);
+  }
   $app.innerHTML = `
     <div class="header row spread">
       <div>
         <h1>🧠 Lewis Quiz</h1>
-        <div class="muted">${SUBJECTS.map((s) => esc(s.name)).join(' · ')} · repaso espaciado tipo Anki</div>
+        <div class="muted">${SUBJECTS.map((s) => esc(s.name)).join(' · ')} · repaso espaciado y simulador de tests</div>
       </div>
       <button class="btn-ranking" id="public-ranking-btn">🏆 Ranking de la clase</button>
     </div>
@@ -236,7 +255,9 @@ async function showUsers() {
     try {
       const u = await call('POST', '/api/users', { name: e.target.name.value });
       openUser(u.id);
-    } catch (err) { toast(err.message); }
+    } catch (err) {
+      toast(err.message);
+    }
   };
 }
 
@@ -251,7 +272,7 @@ async function openUser(id) {
   }
 }
 
-// ---------------- Panel ----------------
+// ---------------- Panel Principal ----------------
 
 function countsHtml(c) {
   return `<div class="counts">
@@ -272,6 +293,7 @@ function barHtml(c) {
 
 function showDashboard() {
   stopTimer();
+  state.testMode = null;
   const { user, subject } = state;
   const now = Date.now();
   const all = SRS.counts(scopeIds('all'), user.cards, now);
@@ -283,24 +305,31 @@ function showDashboard() {
   // Métricas del usuario actual para la asignatura activa
   const metrics = calcUserMetrics(user, subject);
 
-  const topicRows = subject.topics.map((t) => {
-    const c = SRS.counts(scopeIds(t.id), user.cards, now);
-    const a = accuracy(log.filter((e) => Q[e.qid]?.topic === t.id));
-    return `<div class="card topic">
+  const topicRows = subject.topics
+    .map((t) => {
+      const c = SRS.counts(scopeIds(t.id), user.cards, now);
+      const a = accuracy(log.filter((e) => Q[e.qid]?.topic === t.id));
+      return `<div class="card topic">
       <div class="info">
         <div class="name">${esc(t.name)}</div>
         <div class="row spread small"><span class="muted">${c.total} preguntas${a !== null ? ` · ${a}% acierto` : ''}</span></div>
         ${countsHtml(c)}
         ${barHtml(c)}
       </div>
-      <button data-scope="${t.id}">Estudiar</button>
+      <div class="row" style="gap:8px">
+        <button class="btn-test-outline" data-test="${t.id}" title="Hacer test de este tema con nota final">📝 Test</button>
+        <button class="primary" data-scope="${t.id}">Estudiar</button>
+      </div>
     </div>`;
-  }).join('');
+    })
+    .join('');
 
   // Preguntas más falladas
   const fails = {};
   for (const e of log) if (!e.correct) fails[e.qid] = (fails[e.qid] || 0) + 1;
-  const worst = Object.entries(fails).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  const worst = Object.entries(fails)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6);
   const recent = log.slice(-15).reverse();
 
   $app.innerHTML = `
@@ -312,9 +341,13 @@ function showDashboard() {
         <button class="link" id="switch">Cambiar</button>
       </div>
     </div>
-    ${SUBJECTS.length > 1 ? `<div class="tabs">${SUBJECTS.map((s) =>
-      `<button data-subject="${s.id}" class="${s === subject ? 'active' : ''}">${esc(s.name)}</button>`).join('')}</div>` : ''}
+    ${
+      SUBJECTS.length > 1
+        ? `<div class="tabs">${SUBJECTS.map((s) => `<button data-subject="${s.id}" class="${s === subject ? 'active' : ''}">${esc(s.name)}</button>`).join('')}</div>`
+        : ''
+    }
 
+    <!-- Banner de Nota Esperada y Ranking -->
     <div class="user-rank-banner" id="banner-ranking" title="Ver ranking y comparativa de notas">
       <div class="left">
         <div class="rank-badge">🏆</div>
@@ -333,6 +366,27 @@ function showDashboard() {
       <button class="primary" style="padding:6px 12px;font-size:.88rem">Ver Ranking →</button>
     </div>
 
+    <!-- Destacado: Modo Test de Examen con Nota Final -->
+    <div class="card" style="margin-bottom:18px;border-left:5px solid #059669;background:color-mix(in srgb, #059669 6%, var(--card))">
+      <div class="row spread" style="align-items:center;flex-wrap:wrap;gap:12px">
+        <div style="flex:1;min-width:240px">
+          <div style="font-weight:700;font-size:1.06rem;color:var(--text)">📝 Simulador de Test con Nota Final</div>
+          <div class="muted small" style="margin-top:2px">
+            Ponte a prueba con un test de <b>todas las ${all.total} preguntas</b> o elige cuántas quieres. Al finalizar obtendrás tu nota oficial sobre 10 y revisión detallada.
+          </div>
+        </div>
+        <div class="row" style="gap:8px;flex-wrap:wrap">
+          <button class="btn-test" id="btn-quick-full-test" title="Hacer test con todas las preguntas del temario">
+            🚀 Test de todas (${all.total})
+          </button>
+          <button class="btn-test-outline" id="btn-custom-test" title="Abrir selector de cantidad de preguntas">
+            ⚙️ Elegir cuántas preguntas...
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bloque Global -->
     <div class="card">
       <div class="row spread" style="align-items:flex-start">
         <div style="flex:1">
@@ -340,7 +394,10 @@ function showDashboard() {
           ${countsHtml(all)}
           ${barHtml(all)}
         </div>
-        <button class="primary" data-scope="all">Estudiar</button>
+        <div class="row" style="gap:8px;flex-wrap:wrap">
+          <button class="btn-test" data-test="all" title="Hacer test de todas las preguntas">📝 Test</button>
+          <button class="primary" data-scope="all" title="Estudio espaciado Anki">Estudiar</button>
+        </div>
       </div>
     </div>
 
@@ -353,33 +410,67 @@ function showDashboard() {
       <div class="card stat"><b>${acc === null ? '–' : acc + '%'}</b><span class="muted small">acierto global</span></div>
       <div class="card stat"><b>${today.length}</b><span class="muted small">hoy</span></div>
     </div>
-    ${worst.length ? `<div class="card" style="margin-top:10px"><b>Las que más fallas</b><ul class="list small" style="margin-top:6px">
+    ${
+      worst.length
+        ? `<div class="card" style="margin-top:10px"><b>Las que más fallas</b><ul class="list small" style="margin-top:6px">
       ${worst.map(([id, n]) => `<li><span class="bad">✗${n}</span><span class="q" title="${esc(Q[id].q)}">${esc(Q[id].q)}</span><span class="muted">T${Q[id].topic}</span></li>`).join('')}
-    </ul></div>` : ''}
-    ${recent.length ? `<div class="card" style="margin-top:10px"><b>Últimas respuestas</b><ul class="list small" style="margin-top:6px">
+    </ul></div>`
+        : ''
+    }
+    ${
+      recent.length
+        ? `<div class="card" style="margin-top:10px"><b>Últimas respuestas</b><ul class="list small" style="margin-top:6px">
       ${recent.map((e) => `<li><span class="${e.correct ? 'ok' : 'bad'}">${e.correct ? '✓' : '✗'}</span><span class="q" title="${esc(Q[e.qid].q)}">${esc(Q[e.qid].q)}</span><span class="muted">${e.practice ? 'práctica' : RATING_LABEL[e.rating]} · ${timeAgo(e.t)}</span></li>`).join('')}
-    </ul></div>` : '<p class="muted small">Todavía no has respondido ninguna pregunta.</p>'}
+    </ul></div>`
+        : '<p class="muted small">Todavía no has respondido ninguna pregunta.</p>'
+    }
 
     <details class="small muted" style="margin-top:24px">
-      <summary>¿Cómo funciona el repaso espaciado?</summary>
-      <p>Funciona como Anki (algoritmo SM-2). Cada pregunta es una tarjeta. Las nuevas pasan por unos pasos cortos (1 min y 10 min). Cuando las aciertas, pasan a repaso con intervalos en días que crecen: 1 d → ~2–3 d → ~6 d → ~2 semanas…</p>
-      <p>Al acertar eliges lo fácil que te ha resultado. <b>Difícil</b> alarga poco el intervalo y baja la «facilidad» de la tarjeta. <b>Bien</b> lo multiplica por la facilidad (~2,5×). <b>Fácil</b> lo alarga aún más y sube la facilidad. Si fallas, la tarjeta vuelve a aprendizaje (Otra vez) y su facilidad baja. Si aciertas de chiripa, pulsa también Otra vez.</p>
-      <p>Las opciones se barajan cada vez para que no memorices la posición.</p>
+      <summary>¿Cómo funciona el repaso espaciado y el modo test?</summary>
+      <p><b>Modo Estudio (SRS SM-2):</b> Cada pregunta es una tarjeta programada según tu memoria. Al acertar, su intervalo crece en días. Si fallas, vuelve a corto plazo.</p>
+      <p><b>Modo Test / Examen:</b> Te permite examinarte con una tanda de preguntas (o el 100% del temario). Al terminar te calcula tu <b>nota sobre 10</b>, te asigna calificación académica (Suspenso, Aprobado, Notable, Sobresaliente) y te muestra un desglose de fallos y explicaciones.</p>
     </details>
     <div class="row" style="margin-top:10px">
       <button class="link small" id="reset">Reiniciar mi progreso</button>
       <button class="link small" id="delete">Borrar usuario</button>
     </div>`;
 
-  $app.querySelectorAll('[data-subject]').forEach((b) => (b.onclick = () => {
-    state.subject = SUBJECTS.find((s) => s.id === b.dataset.subject);
-    localStorage.setItem('lewis-quiz-subject', state.subject.id);
-    showDashboard();
-  }));
-  $app.querySelectorAll('[data-scope]').forEach((b) => (b.onclick = () => startStudy(b.dataset.scope === 'all' ? 'all' : Number(b.dataset.scope))));
+  $app.querySelectorAll('[data-subject]').forEach((b) => {
+    b.onclick = () => {
+      state.subject = SUBJECTS.find((s) => s.id === b.dataset.subject);
+      localStorage.setItem('lewis-quiz-subject', state.subject.id);
+      showDashboard();
+    };
+  });
+
+  $app.querySelectorAll('[data-scope]').forEach((b) => {
+    b.onclick = () => startStudy(b.dataset.scope === 'all' ? 'all' : Number(b.dataset.scope));
+  });
+
+  // Botones de Modo Test
+  $app.querySelectorAll('[data-test]').forEach((b) => {
+    b.onclick = () => openTestModal(b.dataset.test === 'all' ? 'all' : Number(b.dataset.test));
+  });
+
+  const btnQuickFull = $app.querySelector('#btn-quick-full-test');
+  if (btnQuickFull) {
+    btnQuickFull.onclick = () => {
+      const totalAvailable = state.subject.questions.length;
+      startTest('all', totalAvailable, true, true);
+    };
+  }
+
+  const btnCustom = $app.querySelector('#btn-custom-test');
+  if (btnCustom) {
+    btnCustom.onclick = () => openTestModal('all');
+  }
+
   $app.querySelector('#btn-ranking').onclick = () => showRanking();
   $app.querySelector('#banner-ranking').onclick = () => showRanking();
-  $app.querySelector('#switch').onclick = () => { localStorage.removeItem('lewis-quiz-user'); showUsers(); };
+  $app.querySelector('#switch').onclick = () => {
+    localStorage.removeItem('lewis-quiz-user');
+    showUsers();
+  };
   $app.querySelector('#reset').onclick = async () => {
     if (!confirm(`¿Borrar todo el progreso e historial de ${user.name}?`)) return;
     await call('POST', `/api/users/${user.id}/reset`).catch((e) => toast(e.message));
@@ -393,7 +484,587 @@ function showDashboard() {
   };
 }
 
-// ---------------- Ranking ----------------
+// ---------------- Modal y Configuración del Modo Test ----------------
+
+function openTestModal(scope = 'all') {
+  const ids = scopeIds(scope);
+  const totalAvailable = ids.length;
+  if (!totalAvailable) return toast('No hay preguntas disponibles en este ámbito.');
+
+  // Determinar opciones de preset recomendadas
+  const presets = [10, 20, 30, 50].filter((n) => n < totalAvailable);
+
+  const existingBackdrop = document.querySelector('#test-modal-backdrop');
+  if (existingBackdrop) existingBackdrop.remove();
+
+  const backdrop = document.createElement('div');
+  backdrop.id = 'test-modal-backdrop';
+  backdrop.className = 'modal-backdrop';
+
+  backdrop.innerHTML = `
+    <div class="modal-card stack">
+      <div class="row spread" style="align-items:flex-start">
+        <div>
+          <h2 style="margin:0;font-size:1.25rem">📝 Configurar Test de Examen</h2>
+          <div class="muted small" style="margin-top:2px">${esc(scopeName(scope))} · <b>${totalAvailable}</b> preguntas disponibles</div>
+        </div>
+        <button class="link" id="btn-close-modal" style="font-size:1.4rem;line-height:1;padding:0 4px">✕</button>
+      </div>
+
+      <div style="margin-top:14px">
+        <label class="small muted" style="font-weight:700;display:block;margin-bottom:6px">¿CUÁNTAS PREGUNTAS QUIERES EN EL TEST?</label>
+        <div class="chip-group">
+          <button class="chip-btn active" data-chip="${totalAvailable}">⭐ Todas (${totalAvailable})</button>
+          ${presets.map((p) => `<button class="chip-btn" data-chip="${p}">${p} preguntas</button>`).join('')}
+        </div>
+        
+        <div class="row" style="margin-top:10px;gap:8px">
+          <span class="small muted">Número exacto:</span>
+          <input type="number" id="test-count-input" min="1" max="${totalAvailable}" value="${totalAvailable}" style="width:110px;font-weight:700;text-align:center">
+          <span class="small muted">de ${totalAvailable}</span>
+        </div>
+      </div>
+
+      <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px" class="stack">
+        <label class="row" style="cursor:pointer;gap:10px">
+          <input type="checkbox" id="test-immediate-cb" checked>
+          <span class="small"><b>Corrección inmediata:</b> ver respuesta correcta y explicación tras responder cada pregunta</span>
+        </label>
+        <label class="row" style="cursor:pointer;gap:10px">
+          <input type="checkbox" id="test-shuffle-cb" checked>
+          <span class="small"><b>Barajar preguntas:</b> orden aleatorio para no memorizar posiciones</span>
+        </label>
+      </div>
+
+      <div class="row spread" style="margin-top:18px">
+        <button class="link" id="btn-cancel-modal">Cancelar</button>
+        <button class="btn-test" id="btn-start-test-run" style="padding:10px 22px;font-size:1rem">
+          🚀 Comenzar Test
+        </button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(backdrop);
+
+  const inputEl = backdrop.querySelector('#test-count-input');
+  const chipBtns = backdrop.querySelectorAll('[data-chip]');
+
+  const syncActiveChip = (val) => {
+    chipBtns.forEach((b) => {
+      b.classList.toggle('active', Number(b.dataset.chip) === val);
+    });
+  };
+
+  chipBtns.forEach((btn) => {
+    btn.onclick = () => {
+      const val = Number(btn.dataset.chip);
+      inputEl.value = val;
+      syncActiveChip(val);
+    };
+  });
+
+  inputEl.oninput = () => {
+    let val = Number(inputEl.value);
+    if (val > totalAvailable) val = totalAvailable;
+    if (val < 1) val = 1;
+    syncActiveChip(val);
+  };
+
+  const closeModal = () => backdrop.remove();
+  backdrop.querySelector('#btn-close-modal').onclick = closeModal;
+  backdrop.querySelector('#btn-cancel-modal').onclick = closeModal;
+  backdrop.onclick = (e) => {
+    if (e.target === backdrop) closeModal();
+  };
+
+  backdrop.querySelector('#btn-start-test-run').onclick = () => {
+    let count = Math.min(totalAvailable, Math.max(1, Number(inputEl.value) || totalAvailable));
+    const immediate = backdrop.querySelector('#test-immediate-cb').checked;
+    const shuffle = backdrop.querySelector('#test-shuffle-cb').checked;
+    closeModal();
+    startTest(scope, count, immediate, shuffle);
+  };
+}
+
+// ---------------- Ejecución de la Sesión de Test ----------------
+
+function startTest(scope, count, immediateFeedback = true, shuffle = true) {
+  stopTimer();
+  const ids = scopeIds(scope);
+  if (!ids.length) return toast('No hay preguntas disponibles.');
+
+  let pool = ids.map((id) => Q[id]);
+  if (shuffle) {
+    pool = [...pool];
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+  }
+
+  const selectedQuestions = pool.slice(0, Math.min(count, pool.length));
+
+  state.testMode = {
+    active: true,
+    scope,
+    questions: selectedQuestions,
+    total: selectedQuestions.length,
+    currentIndex: 0,
+    immediateFeedback: !!immediateFeedback,
+    answers: [], // { qid, picked, correct, order }
+    currentOrder: shuffledOrder(selectedQuestions[0]),
+    currentSel: [],
+    currentPicked: null,
+    currentCorrect: null,
+    startTime: Date.now(),
+    endTime: null,
+    filterReview: 'all',
+  };
+
+  renderTestCard();
+}
+
+function renderTestCard() {
+  const tm = state.testMode;
+  if (!tm || !tm.active) return showDashboard();
+
+  const q = tm.questions[tm.currentIndex];
+  const answered = tm.currentPicked !== null;
+  const multi = isMulti(q);
+  const correctCount = tm.answers.filter((a) => a.correct).length;
+
+  const progressPct = ((tm.currentIndex + (answered ? 1 : 0)) / tm.total) * 100;
+
+  const optionsHtml = tm.currentOrder
+    .map((oi, pos) => {
+      let cls = 'option';
+      if (answered) {
+        if (tm.immediateFeedback) {
+          if (isRight(q, oi)) cls += multi && !tm.currentPicked.includes(oi) ? ' correct missed' : ' correct';
+          else if ([].concat(tm.currentPicked).includes(oi)) cls += ' wrong';
+          else cls += ' dim';
+        } else {
+          if ([].concat(tm.currentPicked).includes(oi)) cls += ' selected';
+        }
+      } else if (tm.currentSel.includes(oi)) {
+        cls += ' selected';
+      }
+
+      return `<button class="${cls}" data-test-opt="${oi}" ${answered ? 'disabled' : ''}>
+      <span class="letter">${LETTERS[pos]}</span><span>${esc(q.options[oi])}</span></button>`;
+    })
+    .join('');
+
+  let feedbackHtml = '';
+  if (answered) {
+    if (tm.immediateFeedback) {
+      feedbackHtml = `
+        <div class="feedback ${tm.currentCorrect ? 'ok' : 'bad'}" style="margin-top:14px">
+          <b class="${tm.currentCorrect ? 'ok' : 'bad'}">
+            ${tm.currentCorrect ? '✓ ¡Respuesta correcta!' : `✗ Incorrecto. Respuesta correcta: ${[].concat(q.answer).map((i) => esc(q.options[i])).join(' · ')}`}
+          </b>
+          ${q.explain ? `<p>${rich(q.explain)}</p>` : ''}
+        </div>`;
+    }
+
+    const isLast = tm.currentIndex + 1 === tm.total;
+    feedbackHtml += `
+      <div class="grades one" style="margin-top:14px">
+        <button class="primary ${isLast ? 'btn-test' : ''}" id="test-btn-next" style="padding:12px;font-size:1.05rem">
+          ${isLast ? '🏁 Finalizar Test y Ver Mi Nota' : `Siguiente pregunta (${tm.currentIndex + 2} de ${tm.total}) →`}
+        </button>
+      </div>`;
+  }
+
+  $app.innerHTML = `
+    <!-- Barra superior de navegación del test -->
+    <div class="row spread header">
+      <button class="link" id="test-btn-exit">← Salir del test</button>
+      <div class="row" style="gap:8px">
+        <span class="tag">📝 Test · ${esc(tm.scope === 'all' ? 'Global' : topicName(tm.scope))}</span>
+        <span class="tag" style="background:var(--card);border:1px solid var(--line);color:var(--text)">
+          Pregunta <b>${tm.currentIndex + 1}</b> de <b>${tm.total}</b>
+        </span>
+      </div>
+      ${
+        tm.immediateFeedback && tm.answers.length > 0
+          ? `<div class="small" title="Aciertos en este test">
+              <span class="ok" style="font-weight:700">✓ ${correctCount}</span> / <span class="muted">${tm.answers.length}</span>
+            </div>`
+          : '<div style="width:40px"></div>'
+      }
+    </div>
+
+    <!-- Barra de progreso visual -->
+    <div class="test-progress-bar">
+      <div class="test-progress-fill" style="width:${progressPct}%"></div>
+    </div>
+
+    <!-- Tarjeta de Pregunta -->
+    <div class="card">
+      <div class="row spread small muted" style="margin-bottom:8px">
+        <span>Tema ${q.topic}: ${esc(topicName(q.topic))}</span>
+        <span>Pregunta #${tm.currentIndex + 1}</span>
+      </div>
+
+      <div class="question">${questionHtml(q.q)}</div>
+      ${multi ? '<div class="muted small multi-hint">Marca todas las respuestas correctas y pulsa Comprobar</div>' : ''}
+      
+      <div class="options">${optionsHtml}</div>
+
+      ${multi && !answered ? `<div class="grades one" style="margin-top:14px"><button class="primary" id="test-check-multi" ${tm.currentSel.length ? '' : 'disabled'}>Comprobar respuesta</button></div>` : ''}
+
+      ${feedbackHtml}
+    </div>
+
+    <div class="kbd">
+      ${
+        answered
+          ? 'Pulsa Espacio o Enter para continuar'
+          : multi
+          ? 'Pulsa 1–' + tm.currentOrder.length + ' para marcar · Enter para comprobar'
+          : 'Pulsa 1–' + tm.currentOrder.length + ' o ' + LETTERS.slice(0, tm.currentOrder.length).split('').join('/') + ' para responder'
+      }
+    </div>`;
+
+  // Listeners
+  $app.querySelector('#test-btn-exit').onclick = () => {
+    if (tm.answers.length > 0) {
+      if (!confirm('¿Seguro que quieres salir del test? Tu progreso de esta tanda se perderá.')) return;
+    }
+    state.testMode = null;
+    showDashboard();
+  };
+
+  $app.querySelectorAll('[data-test-opt]').forEach((b) => {
+    b.onclick = () => {
+      const oi = Number(b.dataset.testOpt);
+      if (multi) {
+        tm.currentSel = tm.currentSel.includes(oi) ? tm.currentSel.filter((i) => i !== oi) : [...tm.currentSel, oi];
+        renderTestCard();
+      } else {
+        answerTest(oi);
+      }
+    };
+  });
+
+  const checkBtn = $app.querySelector('#test-check-multi');
+  if (checkBtn) checkBtn.onclick = checkTestMulti;
+
+  const nextBtn = $app.querySelector('#test-btn-next');
+  if (nextBtn) nextBtn.onclick = nextTestQuestion;
+}
+
+function answerTest(optIndex) {
+  const tm = state.testMode;
+  if (!tm || tm.currentPicked !== null) return;
+
+  const q = tm.questions[tm.currentIndex];
+  const correct = optIndex === q.answer;
+
+  tm.currentPicked = optIndex;
+  tm.currentCorrect = correct;
+
+  tm.answers.push({
+    qid: q.id,
+    picked: optIndex,
+    correct,
+    order: tm.currentOrder,
+  });
+
+  // Registrar en historial del usuario (modo práctica, no altera Anki pero computa acierto e historial)
+  if (state.user) {
+    state.user.log.push({ t: Date.now(), qid: q.id, rating: correct ? 'good' : 'again', correct, practice: true });
+    call('POST', `/api/users/${state.user.id}/review`, {
+      qid: q.id,
+      rating: correct ? 'good' : 'again',
+      correct,
+      practice: true,
+    }).catch(() => {});
+  }
+
+  renderTestCard();
+}
+
+function checkTestMulti() {
+  const tm = state.testMode;
+  if (!tm || tm.currentPicked !== null || !tm.currentSel.length) return;
+
+  const q = tm.questions[tm.currentIndex];
+  const correct = tm.currentSel.length === q.answer.length && tm.currentSel.every((i) => q.answer.includes(i));
+
+  tm.currentPicked = [...tm.currentSel];
+  tm.currentCorrect = correct;
+
+  tm.answers.push({
+    qid: q.id,
+    picked: tm.currentPicked,
+    correct,
+    order: tm.currentOrder,
+  });
+
+  if (state.user) {
+    state.user.log.push({ t: Date.now(), qid: q.id, rating: correct ? 'good' : 'again', correct, practice: true });
+    call('POST', `/api/users/${state.user.id}/review`, {
+      qid: q.id,
+      rating: correct ? 'good' : 'again',
+      correct,
+      practice: true,
+    }).catch(() => {});
+  }
+
+  renderTestCard();
+}
+
+function nextTestQuestion() {
+  const tm = state.testMode;
+  if (!tm) return;
+
+  if (tm.currentIndex + 1 < tm.total) {
+    tm.currentIndex++;
+    tm.currentOrder = shuffledOrder(tm.questions[tm.currentIndex]);
+    tm.currentSel = [];
+    tm.currentPicked = null;
+    tm.currentCorrect = null;
+    renderTestCard();
+  } else {
+    tm.endTime = Date.now();
+    showTestResults();
+  }
+}
+
+// ---------------- Pantalla de Resultados y Nota Final ----------------
+
+function showTestResults() {
+  const tm = state.testMode;
+  if (!tm) return showDashboard();
+
+  const total = tm.questions.length;
+  const correctCount = tm.answers.filter((a) => a.correct).length;
+  const wrongCount = total - correctCount;
+  const accuracyPct = Math.round((correctCount / total) * 100);
+
+  // Escala académica española (0.0 a 10.0)
+  const rawScore = (correctCount / total) * 10;
+  const score = Math.round(rawScore * 10) / 10;
+  const grade = getGradeInfo(score);
+
+  const elapsedMs = Math.max(1000, (tm.endTime || Date.now()) - tm.startTime);
+  const totalSeconds = Math.round(elapsedMs / 1000);
+  const mins = Math.floor(totalSeconds / 60);
+  const secs = totalSeconds % 60;
+  const durationText = mins > 0 ? `${mins} min ${secs} s` : `${secs} s`;
+  const avgPerQuestion = Math.round(totalSeconds / total);
+
+  // Desglose por temas tocados en este test
+  const topicStats = {};
+  tm.questions.forEach((q, idx) => {
+    if (!topicStats[q.topic]) {
+      topicStats[q.topic] = { id: q.topic, name: topicName(q.topic), total: 0, correct: 0 };
+    }
+    topicStats[q.topic].total++;
+    if (tm.answers[idx]?.correct) {
+      topicStats[q.topic].correct++;
+    }
+  });
+
+  const topicsList = Object.values(topicStats);
+
+  // Filtrado de revisión de preguntas
+  const filter = tm.filterReview || 'all';
+  const displayedIndices = tm.questions
+    .map((_, i) => i)
+    .filter((i) => {
+      const a = tm.answers[i];
+      if (filter === 'wrong') return !a?.correct;
+      if (filter === 'correct') return !!a?.correct;
+      return true;
+    });
+
+  const reviewQuestionsHtml = displayedIndices
+    .map((idx) => {
+      const q = tm.questions[idx];
+      const a = tm.answers[idx];
+      const isCorrect = a ? a.correct : false;
+      const pickedArray = [].concat(a ? a.picked : []);
+      const rightArray = [].concat(q.answer);
+
+      const optionsReview = q.options
+        .map((optText, oi) => {
+          const isUserPicked = pickedArray.includes(oi);
+          const isRightOpt = rightArray.includes(oi);
+
+          let optCls = 'test-review-opt';
+          let tagBadge = '';
+
+          if (isRightOpt) {
+            optCls += ' opt-correct';
+            tagBadge = '<span class="ok" style="font-weight:700">✓ Correcta</span>';
+          }
+          if (isUserPicked && !isRightOpt) {
+            optCls += ' opt-wrong';
+            tagBadge = '<span class="bad" style="font-weight:700">✗ Tu respuesta</span>';
+          } else if (isUserPicked && isRightOpt) {
+            tagBadge += ' <span class="ok" style="font-size:.8rem;font-weight:700">(Tuya)</span>';
+          }
+
+          return `
+          <div class="${optCls}">
+            <span style="font-weight:700;color:var(--muted);min-width:1.2em">${LETTERS[oi]})</span>
+            <span style="flex:1">${esc(optText)}</span>
+            ${tagBadge}
+          </div>`;
+        })
+        .join('');
+
+      return `
+      <div class="test-review-item ${isCorrect ? 'is-correct' : 'is-wrong'}">
+        <div class="row spread small" style="margin-bottom:6px">
+          <div class="row" style="gap:8px">
+            <span class="${isCorrect ? 'ok' : 'bad'}" style="font-weight:800;font-size:.95rem">
+              ${isCorrect ? '✓ Acierto' : '✗ Fallo'}
+            </span>
+            <span class="muted">Pregunta #${idx + 1} · Tema ${q.topic}</span>
+          </div>
+        </div>
+        
+        <div style="font-weight:600;margin-bottom:8px">${questionHtml(q.q)}</div>
+
+        <div class="test-review-options">${optionsReview}</div>
+
+        ${q.explain ? `<div class="small muted" style="margin-top:10px;padding:8px 10px;background:var(--card);border:1px solid var(--line);border-radius:8px">💡 <b>Explicación:</b> ${rich(q.explain)}</div>` : ''}
+      </div>`;
+    })
+    .join('');
+
+  $app.innerHTML = `
+    <div class="header row spread">
+      <div>
+        <h1>🏁 Resultados del Test</h1>
+        <div class="muted small">${esc(scopeName(tm.scope))} · ${total} preguntas evaluadas</div>
+      </div>
+      <button class="link" id="btn-results-back">← Volver al panel</button>
+    </div>
+
+    <!-- Hero Card con la Nota Final -->
+    <div class="card test-hero-card" style="border-top-color:${grade.color}">
+      <div style="font-size:2.6rem;line-height:1;margin-bottom:6px">
+        ${score >= 9 ? '👑 🥇' : score >= 7 ? '👏 🎯' : score >= 5 ? '👍 📚' : '⚠️ 📖'}
+      </div>
+      <div class="muted small" style="text-transform:uppercase;font-weight:700;letter-spacing:.04em">Tu nota final en el test</div>
+      <div class="test-hero-score" style="color:${grade.color}">
+        ${score}<span style="font-size:1.5rem;font-weight:600;color:var(--muted)"> / 10</span>
+      </div>
+      <div><span class="badge-grade ${grade.cls}" style="font-size:.9rem;padding:4px 14px">${grade.text}</span></div>
+      
+      <p style="margin:14px auto 0;max-width:540px;font-size:1.02rem;color:var(--text);line-height:1.5">
+        ${
+          score >= 9
+            ? '¡Excelente resultado! Dominas con solvencia estas preguntas de la asignatura.'
+            : score >= 7
+            ? '¡Muy buen trabajo! Tienes un nivel notable. Repasa las falladas abajo para alcanzar el 10.'
+            : score >= 5
+            ? '¡Has aprobado el test! Revisa con calma los fallos para consolidar tu conocimiento.'
+            : 'No has alcanzado el aprobado (5,0). Revisa las soluciones explicadas abajo y vuelve a intentarlo.'
+        }
+      </p>
+
+      <div class="row" style="justify-content:center;gap:10px;margin-top:20px;flex-wrap:wrap">
+        <button class="primary btn-test" id="btn-repeat-test">🔄 Repetir este test</button>
+        <button id="btn-new-test">📝 Hacer otro test...</button>
+        <button id="btn-finish-dashboard">🏠 Ir al panel</button>
+      </div>
+    </div>
+
+    <!-- Estadísticas del Test -->
+    <div class="stats" style="margin-bottom:18px">
+      <div class="card stat">
+        <b class="ok">${correctCount} <small style="font-size:.9rem;color:var(--muted)">/ ${total}</small></b>
+        <span class="muted small">aciertos (${accuracyPct}%)</span>
+      </div>
+      <div class="card stat">
+        <b class="${wrongCount > 0 ? 'bad' : 'ok'}">${wrongCount}</b>
+        <span class="muted small">fallos</span>
+      </div>
+      <div class="card stat">
+        <b>${durationText}</b>
+        <span class="muted small">tiempo (${avgPerQuestion}s/preg)</span>
+      </div>
+    </div>
+
+    <!-- Desglose por temas (si hubo más de 1 tema) -->
+    ${
+      topicsList.length > 1
+        ? `
+      <div class="card" style="margin-bottom:18px">
+        <div style="font-weight:700;font-size:1rem;margin-bottom:10px">📊 Rendimiento por temas</div>
+        <div class="topic-breakdown-grid">
+          ${topicsList
+            .map((t) => {
+              const tPct = Math.round((t.correct / t.total) * 100);
+              const tGrade = getGradeInfo((t.correct / t.total) * 10);
+              return `
+              <div class="topic-mini-card">
+                <div class="title" title="${esc(t.name)}">${esc(t.name)}</div>
+                <div class="row spread" style="align-items:baseline">
+                  <span style="font-weight:700;font-size:1.05rem;color:${tGrade.color}">${t.correct}/${t.total} aciertos</span>
+                  <span class="badge-grade ${tGrade.cls}" style="font-size:.7rem">${tPct}%</span>
+                </div>
+                <div class="score-meter" style="margin-top:6px;height:5px">
+                  <div class="score-meter-fill" style="width:${tPct}%;background:${tGrade.color}"></div>
+                </div>
+              </div>`;
+            })
+            .join('')}
+        </div>
+      </div>`
+        : ''
+    }
+
+    <!-- Revisión Detallada de Preguntas -->
+    <div class="row spread" style="margin:20px 0 10px;align-items:baseline">
+      <h2 style="margin:0">Revisión de respuestas</h2>
+      <div class="row" style="gap:6px">
+        <button class="chip-btn ${filter === 'all' ? 'active' : ''}" data-filter-btn="all">Todas (${total})</button>
+        <button class="chip-btn ${filter === 'wrong' ? 'active' : ''}" data-filter-btn="wrong">Falladas (${wrongCount})</button>
+        <button class="chip-btn ${filter === 'correct' ? 'active' : ''}" data-filter-btn="correct">Acertadas (${correctCount})</button>
+      </div>
+    </div>
+
+    <div class="stack">${reviewQuestionsHtml || '<div class="card muted" style="text-align:center;padding:24px">No hay preguntas que coincidan con este filtro.</div>'}</div>
+
+    <div class="row" style="justify-content:center;margin-top:24px;gap:12px">
+      <button class="primary" id="btn-bottom-home">← Volver al panel principal</button>
+    </div>`;
+
+  // Listeners de la pantalla de resultados
+  const goHome = () => {
+    state.testMode = null;
+    showDashboard();
+  };
+
+  $app.querySelector('#btn-results-back').onclick = goHome;
+  $app.querySelector('#btn-finish-dashboard').onclick = goHome;
+  $app.querySelector('#btn-bottom-home').onclick = goHome;
+
+  $app.querySelector('#btn-repeat-test').onclick = () => {
+    // Repetir exactamente las mismas preguntas
+    startTest(tm.scope, tm.questions.length, tm.immediateFeedback, false);
+  };
+
+  $app.querySelector('#btn-new-test').onclick = () => {
+    openTestModal(tm.scope);
+  };
+
+  $app.querySelectorAll('[data-filter-btn]').forEach((btn) => {
+    btn.onclick = () => {
+      tm.filterReview = btn.dataset.filterBtn;
+      showTestResults();
+    };
+  });
+}
+
+// ---------------- Ranking de Alumnos ----------------
 
 async function showRanking() {
   stopTimer();
@@ -426,7 +1097,7 @@ async function showRanking() {
 
 function renderRankingView(allUsersData) {
   const currentScope = state.rankingScope; // 'all' o subjectId
-  const selectedSubject = currentScope === 'all' ? 'all' : (SUBJECTS.find((s) => s.id === currentScope) || 'all');
+  const selectedSubject = currentScope === 'all' ? 'all' : SUBJECTS.find((s) => s.id === currentScope) || 'all';
   const scopeLabel = currentScope === 'all' ? 'Todas las asignaturas' : selectedSubject.name;
 
   // Calcular métricas para todos los usuarios en el ámbito actual
@@ -445,32 +1116,32 @@ function renderRankingView(allUsersData) {
   const sortKey = state.rankingSort;
   usersWithMetrics.sort((a, b) => {
     if (sortKey === 'score') {
-      return b.metrics.expectedScore - a.metrics.expectedScore ||
+      return (
+        b.metrics.expectedScore - a.metrics.expectedScore ||
         (b.metrics.accuracyPct || 0) - (a.metrics.accuracyPct || 0) ||
         b.metrics.mature - a.metrics.mature ||
-        b.metrics.totalReviews - a.metrics.totalReviews;
+        b.metrics.totalReviews - a.metrics.totalReviews
+      );
     }
     if (sortKey === 'accuracy') {
-      return (b.metrics.accuracyPct || 0) - (a.metrics.accuracyPct || 0) ||
-        b.metrics.expectedScore - a.metrics.expectedScore;
+      return (b.metrics.accuracyPct || 0) - (a.metrics.accuracyPct || 0) || b.metrics.expectedScore - a.metrics.expectedScore;
     }
     if (sortKey === 'coverage') {
-      return b.metrics.coverage - a.metrics.coverage ||
-        b.metrics.expectedScore - a.metrics.expectedScore;
+      return b.metrics.coverage - a.metrics.coverage || b.metrics.expectedScore - a.metrics.expectedScore;
     }
     if (sortKey === 'mature') {
-      return b.metrics.mature - a.metrics.mature ||
-        b.metrics.expectedScore - a.metrics.expectedScore;
+      return b.metrics.mature - a.metrics.mature || b.metrics.expectedScore - a.metrics.expectedScore;
     }
     if (sortKey === 'reviews') {
-      return b.metrics.totalReviews - a.metrics.totalReviews ||
-        b.metrics.expectedScore - a.metrics.expectedScore;
+      return b.metrics.totalReviews - a.metrics.totalReviews || b.metrics.expectedScore - a.metrics.expectedScore;
     }
     return 0;
   });
 
   // Asignar puestos
-  usersWithMetrics.forEach((u, i) => { u.rank = i + 1; });
+  usersWithMetrics.forEach((u, i) => {
+    u.rank = i + 1;
+  });
 
   const myEntry = usersWithMetrics.find((u) => u.isMe);
 
@@ -483,7 +1154,9 @@ function renderRankingView(allUsersData) {
   if (usersWithMetrics.length >= 2) {
     podiumHtml = `
       <div class="podium">
-        ${top2 ? `
+        ${
+          top2
+            ? `
           <div class="podium-slot second ${top2.isMe ? 'is-me' : ''}" data-expand="${top2.id}">
             <div class="podium-crown">🥈</div>
             <div class="podium-rank">2º Puesto</div>
@@ -491,8 +1164,12 @@ function renderRankingView(allUsersData) {
             <div class="podium-score" style="color:${top2.metrics.grade.color}">${top2.metrics.expectedScore}<span style="font-size:.85rem;color:var(--muted)">/10</span></div>
             <div style="margin-top:4px"><span class="badge-grade ${top2.metrics.grade.cls}">${top2.metrics.grade.text}</span></div>
             <div class="small muted" style="margin-top:6px">${top2.metrics.coverage}% visto · ${top2.metrics.totalReviews} reps</div>
-          </div>` : ''}
-        ${top1 ? `
+          </div>`
+            : ''
+        }
+        ${
+          top1
+            ? `
           <div class="podium-slot first ${top1.isMe ? 'is-me' : ''}" data-expand="${top1.id}">
             <div class="podium-crown">👑 🥇</div>
             <div class="podium-rank" style="color:#b45309">1º Puesto</div>
@@ -500,8 +1177,12 @@ function renderRankingView(allUsersData) {
             <div class="podium-score" style="color:${top1.metrics.grade.color};font-size:1.8rem">${top1.metrics.expectedScore}<span style="font-size:1rem;color:var(--muted)">/10</span></div>
             <div style="margin-top:4px"><span class="badge-grade ${top1.metrics.grade.cls}">${top1.metrics.grade.text}</span></div>
             <div class="small muted" style="margin-top:6px">${top1.metrics.coverage}% visto · ${top1.metrics.totalReviews} reps</div>
-          </div>` : ''}
-        ${top3 ? `
+          </div>`
+            : ''
+        }
+        ${
+          top3
+            ? `
           <div class="podium-slot third ${top3.isMe ? 'is-me' : ''}" data-expand="${top3.id}">
             <div class="podium-crown">🥉</div>
             <div class="podium-rank">3º Puesto</div>
@@ -509,24 +1190,31 @@ function renderRankingView(allUsersData) {
             <div class="podium-score" style="color:${top3.metrics.grade.color}">${top3.metrics.expectedScore}<span style="font-size:.85rem;color:var(--muted)">/10</span></div>
             <div style="margin-top:4px"><span class="badge-grade ${top3.metrics.grade.cls}">${top3.metrics.grade.text}</span></div>
             <div class="small muted" style="margin-top:6px">${top3.metrics.coverage}% visto · ${top3.metrics.totalReviews} reps</div>
-          </div>` : ''}
+          </div>`
+            : ''
+        }
       </div>`;
   }
 
   // Lista de usuarios
-  const listRows = usersWithMetrics.map((u) => {
-    const isExpanded = state.expandedUserId === u.id;
-    const m = u.metrics;
-    const medalCls = u.rank === 1 ? 'medal-1' : u.rank === 2 ? 'medal-2' : u.rank === 3 ? 'medal-3' : '';
-    const medalIcon = u.rank === 1 ? '🥇' : u.rank === 2 ? '🥈' : u.rank === 3 ? '🥉' : `#${u.rank}`;
+  const listRows = usersWithMetrics
+    .map((u) => {
+      const isExpanded = state.expandedUserId === u.id;
+      const m = u.metrics;
+      const medalCls = u.rank === 1 ? 'medal-1' : u.rank === 2 ? 'medal-2' : u.rank === 3 ? 'medal-3' : '';
+      const medalIcon = u.rank === 1 ? '🥇' : u.rank === 2 ? '🥈' : u.rank === 3 ? '🥉' : `#${u.rank}`;
 
-    let breakdownHtml = '';
-    if (isExpanded) {
-      const topicGrid = m.topicsBreakdown && m.topicsBreakdown.length ? `
+      let breakdownHtml = '';
+      if (isExpanded) {
+        const topicGrid =
+          m.topicsBreakdown && m.topicsBreakdown.length
+            ? `
         <div style="margin-top:12px">
           <div class="small muted" style="font-weight:700;text-transform:uppercase">Nota y dominio por temas</div>
           <div class="topic-breakdown-grid">
-            ${m.topicsBreakdown.map((t) => `
+            ${m.topicsBreakdown
+              .map(
+                (t) => `
               <div class="topic-mini-card">
                 <div class="title" title="${esc(t.name)}">${esc(t.name)}</div>
                 <div class="row spread" style="align-items:baseline">
@@ -539,11 +1227,14 @@ function renderRankingView(allUsersData) {
                 <div class="score-meter" style="margin-top:4px;height:4px">
                   <div class="score-meter-fill" style="width:${Math.min(100, t.score * 10)}%;background:${t.grade.color}"></div>
                 </div>
-              </div>`).join('')}
+              </div>`
+              )
+              .join('')}
           </div>
-        </div>` : '';
+        </div>`
+            : '';
 
-      breakdownHtml = `
+        breakdownHtml = `
         <div class="user-detail-card">
           <div class="row spread" style="align-items:flex-start">
             <div>
@@ -577,9 +1268,9 @@ function renderRankingView(allUsersData) {
 
           ${topicGrid}
         </div>`;
-    }
+      }
 
-    return `
+      return `
       <div>
         <div class="ranking-item ${u.isMe ? 'is-me' : ''}" data-expand="${u.id}">
           <div class="rank-num ${medalCls}">${medalIcon}</div>
@@ -613,7 +1304,8 @@ function renderRankingView(allUsersData) {
         </div>
         ${breakdownHtml}
       </div>`;
-  }).join('');
+    })
+    .join('');
 
   $app.innerHTML = `
     <div class="header row spread">
@@ -626,12 +1318,12 @@ function renderRankingView(allUsersData) {
 
     <div class="tabs">
       <button data-rank-scope="all" class="${currentScope === 'all' ? 'active' : ''}">🌍 General (Todas)</button>
-      ${SUBJECTS.map((s) => `
-        <button data-rank-scope="${s.id}" class="${currentScope === s.id ? 'active' : ''}">${esc(s.name)}</button>
-      `).join('')}
+      ${SUBJECTS.map((s) => `<button data-rank-scope="${s.id}" class="${currentScope === s.id ? 'active' : ''}">${esc(s.name)}</button>`).join('')}
     </div>
 
-    ${myEntry ? `
+    ${
+      myEntry
+        ? `
       <div class="user-rank-banner" style="cursor:default">
         <div class="left">
           <div class="rank-badge">${myEntry.rank === 1 ? '🥇' : myEntry.rank === 2 ? '🥈' : myEntry.rank === 3 ? '🥉' : '#' + myEntry.rank}</div>
@@ -645,7 +1337,9 @@ function renderRankingView(allUsersData) {
           </div>
         </div>
         <button id="my-study-btn" class="primary" style="padding:6px 14px">Estudiar ahora</button>
-      </div>` : ''}
+      </div>`
+        : ''
+    }
 
     ${podiumHtml}
 
@@ -708,12 +1402,12 @@ function renderRankingView(allUsersData) {
   });
 }
 
-// ---------------- Estudio ----------------
+// ---------------- Modo Estudio Espaciado (SRS) ----------------
 
 function shuffledOrder(q) {
   const idx = q.options.map((_, i) => i);
   if (q.options === TF) return idx; // True/False siempre en el mismo orden
-  const pinned = idx.filter((i) => /^(none of the above|any \()/i.test(q.options[i]));
+  const pinned = idx.filter((i) => /^(none of the above|any \(|todas las anteriores)/i.test(q.options[i]));
   const free = idx.filter((i) => !pinned.includes(i));
   for (let i = free.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -726,6 +1420,7 @@ function startStudy(scope) {
   state.scope = scope;
   state.practice = false;
   state.lastId = null;
+  state.testMode = null;
   nextCard();
 }
 
@@ -749,8 +1444,12 @@ function topBar() {
   return `<div class="row spread header">
     <button class="link" id="back">← Volver</button>
     <span class="tag">${esc(state.scope === 'all' ? 'Global' : 'Tema ' + state.scope)}</span>
-    ${state.practice ? '<span class="muted small">práctica</span>' : `<div class="counts" title="Nuevas · Aprendiendo · Repaso">
-      <span class="n-new">${c.new}</span><span class="n-learn">${c.dueLearn}</span><span class="n-review">${c.dueReview}</span></div>`}
+    ${
+      state.practice
+        ? '<span class="muted small">práctica</span>'
+        : `<div class="counts" title="Nuevas · Aprendiendo · Repaso">
+      <span class="n-new">${c.new}</span><span class="n-learn">${c.dueLearn}</span><span class="n-review">${c.dueReview}</span></div>`
+    }
   </div>`;
 }
 
@@ -761,16 +1460,18 @@ function renderCard() {
   const card = state.user.cards[id] || SRS.newCard();
   const answered = picked !== null;
 
-  const options = order.map((oi, pos) => {
-    let cls = 'option';
-    if (answered) {
-      if (isRight(q, oi)) cls += multi && !picked.includes(oi) ? ' correct missed' : ' correct';
-      else if ([].concat(picked).includes(oi)) cls += ' wrong';
-      else cls += ' dim';
-    } else if (sel.includes(oi)) cls += ' selected';
-    return `<button class="${cls}" data-opt="${oi}" ${answered ? 'disabled' : ''}>
+  const options = order
+    .map((oi, pos) => {
+      let cls = 'option';
+      if (answered) {
+        if (isRight(q, oi)) cls += multi && !picked.includes(oi) ? ' correct missed' : ' correct';
+        else if ([].concat(picked).includes(oi)) cls += ' wrong';
+        else cls += ' dim';
+      } else if (sel.includes(oi)) cls += ' selected';
+      return `<button class="${cls}" data-opt="${oi}" ${answered ? 'disabled' : ''}>
       <span class="letter">${LETTERS[pos]}</span><span>${esc(q.options[oi])}</span></button>`;
-  }).join('');
+    })
+    .join('');
 
   let after = '';
   if (answered) {
@@ -782,8 +1483,11 @@ function renderCard() {
     } else {
       const pv = SRS.preview(card);
       const ratings = correct ? ['again', 'hard', 'good', 'easy'] : ['again'];
-      after = fb + `<div class="grades ${correct ? '' : 'one'}">${ratings.map((r) =>
-        `<button class="grade ${r}" data-rate="${r}"><span>${RATING_LABEL[r]}</span><small>${pv[r]}</small></button>`).join('')}</div>`;
+      after =
+        fb +
+        `<div class="grades ${correct ? '' : 'one'}">${ratings
+          .map((r) => `<button class="grade ${r}" data-rate="${r}"><span>${RATING_LABEL[r]}</span><small>${pv[r]}</small></button>`)
+          .join('')}</div>`;
     }
   }
 
@@ -799,8 +1503,13 @@ function renderCard() {
       ${multi && !answered ? `<div class="grades one"><button class="primary" data-check ${sel.length ? '' : 'disabled'}>Comprobar</button></div>` : ''}
       ${after}
     </div>
-    <div class="kbd">${answered ? (correct && !state.practice ? 'Teclas: 1 Otra vez · 2 Difícil · 3/espacio Bien · 4 Fácil' : 'Espacio para continuar')
-      : `Teclas: 1–${order.length} o ${LETTERS.slice(0, order.length).split('').join('/')}${multi ? ' para marcar · Enter para comprobar' : ''}`}</div>`;
+    <div class="kbd">${
+      answered
+        ? correct && !state.practice
+          ? 'Teclas: 1 Otra vez · 2 Difícil · 3/espacio Bien · 4 Fácil'
+          : 'Espacio para continuar'
+        : `Teclas: 1–${order.length} o ${LETTERS.slice(0, order.length).split('').join('/')}${multi ? ' para marcar · Enter para comprobar' : ''}`
+    }</div>`;
 
   $app.querySelector('#back').onclick = showDashboard;
   $app.querySelectorAll('[data-opt]').forEach((b) => (b.onclick = () => answer(Number(b.dataset.opt))));
@@ -864,33 +1573,85 @@ function showDone() {
     </div>`;
   $app.querySelector('#back').onclick = showDashboard;
   $app.querySelector('#home').onclick = showDashboard;
-  $app.querySelector('#practice').onclick = () => { state.practice = true; nextCard(); };
+  $app.querySelector('#practice').onclick = () => {
+    state.practice = true;
+    nextCard();
+  };
   // Si una tarjeta de aprendizaje vence mientras esperas, se reanuda sola.
   state.timer = setInterval(() => {
     if (SRS.pickNext(scopeIds(state.scope), state.user.cards, Date.now())) nextCard();
   }, 15000);
 }
 
-// ---------------- Teclado ----------------
+// ---------------- Atajos de Teclado ----------------
 
 document.addEventListener('keydown', (e) => {
-  if (!state.current || !document.querySelector('.options') || e.target.tagName === 'INPUT') return;
+  if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
   if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+  // 1. Teclas en Modo Test
+  if (state.testMode && state.testMode.active) {
+    const tm = state.testMode;
+    const q = tm.questions[tm.currentIndex];
+    const k = e.key.toLowerCase();
+    const answered = tm.currentPicked !== null;
+
+    if (!answered) {
+      if (k === 'enter' && isMulti(q)) {
+        e.preventDefault();
+        checkTestMulti();
+        return;
+      }
+      let pos = '123456'.indexOf(k);
+      if (pos < 0) pos = 'abcdef'.indexOf(k);
+      if (pos >= 0 && pos < tm.currentOrder.length) {
+        const oi = tm.currentOrder[pos];
+        if (isMulti(q)) {
+          tm.currentSel = tm.currentSel.includes(oi) ? tm.currentSel.filter((i) => i !== oi) : [...tm.currentSel, oi];
+          renderTestCard();
+        } else {
+          answerTest(oi);
+        }
+      }
+      return;
+    }
+
+    // Pregunta de test ya respondida
+    if (k === ' ' || k === 'enter') {
+      e.preventDefault();
+      nextTestQuestion();
+      return;
+    }
+    return;
+  }
+
+  // 2. Teclas en Modo Estudio Normal
+  if (!state.current || !document.querySelector('.options')) return;
   const cur = state.current;
   const k = e.key.toLowerCase();
   if (cur.picked === null) {
-    if (k === 'enter') { e.preventDefault(); checkMulti(); return; }
+    if (k === 'enter') {
+      e.preventDefault();
+      checkMulti();
+      return;
+    }
     let pos = '123456'.indexOf(k);
     if (pos < 0) pos = 'abcdef'.indexOf(k);
     if (pos >= 0 && pos < cur.order.length) answer(cur.order[pos]);
     return;
   }
   if (state.practice || !cur.correct) {
-    if (k === ' ' || k === 'enter' || k === '1') { e.preventDefault(); rate(cur.correct ? 'good' : 'again'); }
+    if (k === ' ' || k === 'enter' || k === '1') {
+      e.preventDefault();
+      rate(cur.correct ? 'good' : 'again');
+    }
     return;
   }
   const map = { 1: 'again', 2: 'hard', 3: 'good', 4: 'easy', ' ': 'good', enter: 'good' };
-  if (map[k]) { e.preventDefault(); rate(map[k]); }
+  if (map[k]) {
+    e.preventDefault();
+    rate(map[k]);
+  }
 });
 
 // ---------------- Inicio ----------------

@@ -298,6 +298,142 @@
       color: var(--text);
     }
 
+    /* ---------------- Modo Test / Examen ---------------- */
+    button.btn-test {
+      background: #059669;
+      border-color: #059669;
+      color: #fff;
+      font-weight: 600;
+    }
+    button.btn-test:hover {
+      background: #047857;
+      border-color: #047857;
+    }
+    button.btn-test-outline {
+      border-color: #059669;
+      color: #059669;
+      font-weight: 600;
+    }
+    button.btn-test-outline:hover {
+      background: color-mix(in srgb, #059669 12%, transparent);
+    }
+
+    .test-progress-bar {
+      height: 7px;
+      background: var(--line);
+      border-radius: 99px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+    .test-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent) 0%, #10b981 100%);
+      border-radius: 99px;
+      transition: width .25s ease;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+      padding: 16px;
+      animation: fadeIn .15s ease;
+    }
+    .modal-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 24px;
+      width: 100%;
+      max-width: 520px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    }
+    .chip-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 8px 0;
+    }
+    .chip-btn {
+      border-radius: 99px;
+      padding: 6px 14px;
+      font-size: .88rem;
+      font-weight: 500;
+      border: 1px solid var(--line);
+      background: var(--card);
+      color: var(--text);
+      cursor: pointer;
+      transition: all .15s ease;
+    }
+    .chip-btn:hover { border-color: var(--accent); }
+    .chip-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .test-hero-card {
+      text-align: center;
+      padding: 28px 16px;
+      border-top: 5px solid var(--accent);
+      margin-bottom: 16px;
+    }
+    .test-hero-score {
+      font-size: 3.4rem;
+      font-weight: 900;
+      line-height: 1.1;
+      margin: 6px 0;
+    }
+
+    .test-review-item {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+      transition: border-color .15s ease;
+    }
+    .test-review-item.is-correct { border-left: 5px solid var(--ok); }
+    .test-review-item.is-wrong { border-left: 5px solid var(--bad); }
+
+    .test-review-options {
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: .92rem;
+    }
+    .test-review-opt {
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: var(--bg);
+      display: flex;
+      gap: 8px;
+      align-items: baseline;
+    }
+    .test-review-opt.opt-correct {
+      background: var(--ok-bg);
+      border-color: var(--ok);
+      font-weight: 600;
+    }
+    .test-review-opt.opt-wrong {
+      background: var(--bad-bg);
+      border-color: var(--bad);
+      text-decoration: line-through;
+    }
+
     @media (max-width: 580px) {
       .podium { gap: 6px; }
       .podium-slot { padding: 12px 6px; }
@@ -308,6 +444,7 @@
       .grades { grid-template-columns: repeat(2, 1fr); }
       .topic { flex-wrap: wrap; }
       .topic button { width: 100%; }
+      .test-hero-score { font-size: 2.8rem; }
     }
   </style>
 </head>
