@@ -1,6 +1,6 @@
 // Banco de preguntas de Statistical Programming.
 // Fuente: capturas de "Statistical Programming Question/Chapter N", statistical_programming_questions.docx y
-// weekly_quiz_questions_answers.md (sin duplicados; en t1-11, t1-12 y t3-09 las opciones incorrectas son inventadas). `answer` es el índice de la opción correcta dentro de `options`.
+// weekly_quiz_questions_answers.md y Tema 7 DM & SP.pdf (sin duplicados; en t1-11, t1-12 y t3-09 las opciones incorrectas son inventadas). `answer` es el índice de la opción correcta dentro de `options`.
 
 const SP_TOPICS = [
   { id: 1, name: 'Tema 1 · Introducción a la programación y Python' },
@@ -9,6 +9,7 @@ const SP_TOPICS = [
   { id: 4, name: 'Tema 4 · pandas' },
   { id: 5, name: 'Tema 5 · Carga, limpieza y transformación de datos' },
   { id: 6, name: 'Tema 6 · Visualización' },
+  { id: 7, name: 'Tema 7 · Agregación de datos y operaciones de grupo' },
 ];
 
 const SP_QUESTIONS = [
@@ -197,6 +198,22 @@ const SP_QUESTIONS = [
   { id: 't6-10', topic: 6, q: 'In a normalized histogram corresponding to a probability density function, the sum of the bin counts must equal 1.',
     options: TF, answer: 1,
     explain: 'En un histograma de densidad lo que suma 1 es el área total (altura × ancho de bin), no las alturas.' },
+  // ---------- Tema 7 ----------
+  { id: 't7-01', topic: 7, q: 'The qcut method produces equal-length buckets.',
+    options: TF, answer: 1,
+    explain: '`qcut` corta por cuantiles: buckets con el mismo número de elementos. Los de igual longitud los da `cut`.' },
+  { id: 't7-02', topic: 7, q: 'The most general method for mapping group values is',
+    options: ['apply', 'transform', 'agg', 'cut'], answer: 0,
+    explain: '`apply` acepta cualquier función que reciba el grupo y devuelva un escalar, una Series o un DataFrame. `agg` y `transform` son más restrictivos.' },
+  { id: 't7-03', topic: 7, q: 'A pivot table creates a slice of a data cube that aggregates the measurements.',
+    options: TF, answer: 0,
+    explain: 'Una tabla dinámica agrupa por dos dimensiones (filas y columnas) y agrega los valores: es un corte del cubo de datos.' },
+  { id: 't7-04', topic: 7, q: "The statement\ndf2[['data1','data2']].groupby([df2['key1'],df2['key2']]).mean()\nproduces a hierarchical index.",
+    options: TF, answer: 0,
+    explain: 'Agrupar por dos claves genera un MultiIndex (key1, key2) en el resultado.' },
+  { id: 't7-05', topic: 7, q: "The following Python statement:\ndf2['attr1'].groupby(df2['attr2']).mean()\nproduces a table of the mean values of attr2.",
+    options: TF, answer: 1,
+    explain: 'Calcula la media de attr1 para cada valor de attr2. attr2 solo sirve de clave de agrupación.' },
 ];
 
 SUBJECTS.push({ id: 'sp', name: 'Statistical Programming', topics: SP_TOPICS, questions: SP_QUESTIONS });

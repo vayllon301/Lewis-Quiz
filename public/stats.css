@@ -1,0 +1,43 @@
+/* Estadísticas (stats.js) */
+:root { --peer: #d97706; }
+@media (prefers-color-scheme: dark) { :root { --peer: #fbbf24; } }
+
+.btn-compare { font-size: .75rem; padding: 3px 8px; border-radius: 99px; }
+
+.stats-toggles { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+.stats-toggles .tabs { margin-bottom: 0; }
+
+.seg { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+.seg button { border: 0; background: none; color: var(--muted); padding: 6px 14px; border-radius: 7px; }
+.seg button.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.seg.small button { padding: 3px 10px; font-size: .82rem; }
+
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.kpis .stat b small { font-size: .85rem; font-weight: 500; color: var(--muted); }
+
+.stats-card { margin-top: 14px; }
+.stats-card-head { margin-bottom: 12px; }
+.stats-chart { position: relative; height: 240px; }
+
+.stats-row { display: grid; grid-template-columns: minmax(0, 1fr) 110px 2.4em 4.5em; align-items: center; gap: 12px; }
+.stats-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stats-row .bar { margin-top: 0; }
+.stats-row .val { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.stats-row button.link { padding: 0; justify-self: end; }
+.stats-row.compare { grid-template-columns: minmax(0, 1fr) 180px; }
+.stats-row .pair { display: grid; grid-template-columns: 1fr 2.4em; align-items: center; gap: 0 10px; }
+.stats-row .pair .val { font-size: .88rem; line-height: 1.35; }
+
+.stats-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.stats-table th, .stats-table td { padding: 8px 6px; text-align: right; border-top: 1px solid var(--line); }
+.stats-table th:first-child, .stats-table td:first-child { text-align: left; }
+.stats-table thead th { border-top: 0; font-size: .8rem; font-weight: 600; color: var(--muted); }
+
+select { font: inherit; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--text); }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+
+@media (max-width: 580px) {
+  .kpis { grid-template-columns: repeat(2, 1fr); }
+  .stats-row { grid-template-columns: minmax(0, 1fr) 70px 2.4em 4em; gap: 8px; }
+  .stats-row.compare { grid-template-columns: minmax(0, 1fr) 120px; }
+}

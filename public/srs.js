@@ -158,6 +158,49 @@ const SRS = (() => {
     return choose(learn, true) || choose(review, true) || choose(fresh, false) || choose(ahead, true);
   }
 
+  // Devuelve una cola ordenada de IDs para una sesión forzada según la estrategia solicitada.
+  // strategy: 'due' (adelantar las que vencen antes), 'hard' (menor facilidad y más fallos), 'random' (aleatorias)
+  function getForcedQueue(ids, cards, count, strategy = 'due', logs = []) {
+    const get = (id) => cards[id] || newCard();
+    let pool = [...ids];
+
+    if (strategy === 'hard') {
+      const failsCount = {};
+      for (const e of logs) {
+        if (!e.correct) failsCount[e.qid] = (failsCount[e.qid] || 0) + 1;
+      }
+      pool.sort((a, b) => {
+        const ca = get(a), cb = get(b);
+        const scoreA = (ca.lapses || 0) * 10 + (failsCount[a] || 0) * 5 + (2.5 - (ca.ease || 2.5)) * 10;
+        const scoreB = (cb.lapses || 0) * 10 + (failsCount[b] || 0) * 5 + (2.5 - (cb.ease || 2.5)) * 10;
+        if (scoreB !== scoreA) return scoreB - scoreA;
+        return (ca.due || 0) - (cb.due || 0);
+      });
+    } else if (strategy === 'random') {
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+    } else {
+      // 'due': Adelantar próximas a vencer en el tiempo.
+      // Tarjetas con fecha due asignada van primero (ordenadas por due ascendente), seguidas de nuevas (due = 0).
+      pool.sort((a, b) => {
+        const ca = get(a), cb = get(b);
+        const dueA = ca.due || 0;
+        const dueB = cb.due || 0;
+        if (dueA > 0 && dueB > 0) return dueA - dueB;
+        if (dueA > 0 && dueB === 0) return -1;
+        if (dueB > 0 && dueA === 0) return 1;
+        return 0;
+      });
+    }
+
+    if (count && count > 0) {
+      pool = pool.slice(0, Math.min(count, pool.length));
+    }
+    return pool;
+  }
+
   function counts(ids, cards, now = Date.now()) {
     const r = { total: ids.length, new: 0, learning: 0, young: 0, mature: 0, dueLearn: 0, dueReview: 0, nextDue: null };
     for (const id of ids) {
@@ -170,5 +213,5 @@ const SRS = (() => {
     return r;
   }
 
-  return { CFG, newCard, schedule, preview, pickNext, counts, formatDelay, isLearning };
+  return { CFG, newCard, schedule, preview, pickNext, getForcedQueue, counts, formatDelay, isLearning };
 })();

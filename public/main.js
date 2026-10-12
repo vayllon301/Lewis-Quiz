@@ -19,6 +19,7 @@ const state = {
   expandedUserId: null,
   cachedRanking: null,
   testMode: null, // estado de la sesión de test/examen
+  forceStudy: null, // estado de la sesión forzada de estudio
 };
 window.state = state;
 
@@ -47,9 +48,21 @@ function stopTimer() {
   state.timer = null;
 }
 
-const scopeIds = (scope) => state.subject.questions.filter((q) => scope === 'all' || q.topic === scope).map((q) => q.id);
-const scopeName = (scope) => (scope === 'all' ? `${state.subject.name} · todos los temas` : topicName(scope));
-const topicName = (id) => state.subject.topics.find((t) => t.id === id).name;
+const scopeIds = (scope) => {
+  if (scope === 'all') return state.subject.questions.map((q) => q.id);
+  if (scope === 'final-mock') return state.subject.questions.filter((q) => q.exam === 'final-mock').map((q) => q.id);
+  return state.subject.questions.filter((q) => q.topic === scope).map((q) => q.id);
+};
+const scopeName = (scope) => {
+  if (scope === 'all') return `${state.subject.name} · todos los temas`;
+  if (scope === 'final-mock') return `${state.subject.name} · Final Mock Exam (40 preguntas)`;
+  return topicName(scope);
+};
+const topicName = (id) => {
+  if (id === 'final-mock') return 'Final Mock Exam';
+  const t = state.subject.topics.find((t) => t.id === id);
+  return t ? t.name : String(id);
+};
 
 // Preguntas de respuesta múltiple: `answer` es un array y hay que marcar exactamente esas opciones.
 const isMulti = (q) => Array.isArray(q.answer);
@@ -316,7 +329,8 @@ function showDashboard() {
         ${countsHtml(c)}
         ${barHtml(c)}
       </div>
-      <div class="row" style="gap:8px">
+      <div class="row" style="gap:6px;flex-wrap:wrap">
+        <button class="btn-force-study-outline" data-force-study="${t.id}" title="Forzar sesión de estudio adelantada de este tema">⚡ Forzar</button>
         <button class="btn-test-outline" data-test="${t.id}" title="Hacer test de este tema con nota final">📝 Test</button>
         <button class="primary" data-scope="${t.id}">Estudiar</button>
       </div>
@@ -333,9 +347,10 @@ function showDashboard() {
   const recent = log.slice(-15).reverse();
 
   $app.innerHTML = `
-    <div class="header row spread">
+    <div class="header row spread" style="flex-wrap:wrap">
       <div><h1>🧠 Lewis Quiz</h1><div class="muted small">${esc(subject.name)}</div></div>
-      <div class="row">
+      <div class="row" style="flex-wrap:wrap;gap:8px">
+        <button class="btn-ranking" id="btn-stats">📊 Estadísticas</button>
         <button class="btn-ranking" id="btn-ranking">🏆 Ranking</button>
         <span>👤 <b>${esc(user.name)}</b></span>
         <button class="link" id="switch">Cambiar</button>
@@ -376,6 +391,13 @@ function showDashboard() {
           </div>
         </div>
         <div class="row" style="gap:8px;flex-wrap:wrap">
+          ${
+            subject.exams && subject.exams.some((e) => e.id === 'final-mock')
+              ? `<button class="btn-test" data-test="final-mock" style="background:#4338ca;border-color:#4338ca" title="Hacer el Final Mock Exam oficial (40 preguntas)">
+            🎓 Final Mock Exam (40)
+          </button>`
+              : ''
+          }
           <button class="btn-test" id="btn-quick-full-test" title="Hacer test con todas las preguntas del temario">
             🚀 Test de todas (${all.total})
           </button>
@@ -395,11 +417,39 @@ function showDashboard() {
           ${barHtml(all)}
         </div>
         <div class="row" style="gap:8px;flex-wrap:wrap">
+          <button class="btn-force-study-outline" data-force-study="all" title="Forzar sesión de estudio adelantada de todo el temario">⚡ Forzar sesión</button>
           <button class="btn-test" data-test="all" title="Hacer test de todas las preguntas">📝 Test</button>
           <button class="primary" data-scope="all" title="Estudio espaciado Anki">Estudiar</button>
         </div>
       </div>
     </div>
+
+    ${
+      subject.exams && subject.exams.length
+        ? `<h2>Exámenes Oficiales y Simulacros</h2>
+    <div class="stack">
+      ${subject.exams
+        .map((ex) => {
+          const c = SRS.counts(scopeIds(ex.id), user.cards, now);
+          const a = accuracy(log.filter((e) => Q[e.qid]?.exam === ex.id));
+          return `<div class="card topic" style="border-left:5px solid var(--accent);background:color-mix(in srgb, var(--accent) 4%, var(--card))">
+        <div class="info">
+          <div class="name">🎓 <b>${esc(ex.name)}</b> <span class="tag" style="background:var(--accent-soft);color:var(--accent);font-weight:700">${ex.count} preguntas</span></div>
+          <div class="row spread small" style="margin-top:2px"><span class="muted">${esc(ex.description || ex.title)}${a !== null ? ` · ${a}% acierto histórico` : ''}</span></div>
+          ${countsHtml(c)}
+          ${barHtml(c)}
+        </div>
+        <div class="row" style="gap:6px;flex-wrap:wrap">
+          <button class="btn-force-study-outline" data-force-study="${ex.id}" title="Forzar sesión de estudio adelantada de este examen">⚡ Forzar</button>
+          <button class="btn-test" data-test="${ex.id}" title="Hacer el examen completo con nota oficial">📝 Examen</button>
+          <button class="primary" data-scope="${ex.id}" title="Estudio espaciado Anki de este examen">Estudiar</button>
+        </div>
+      </div>`;
+        })
+        .join('')}
+    </div>`
+        : ''
+    }
 
     <h2>Por temas</h2>
     <div class="stack">${topicRows}</div>
@@ -443,13 +493,19 @@ function showDashboard() {
     };
   });
 
+  const parseScope = (val) => (val === 'all' || isNaN(val) ? val : Number(val));
+
   $app.querySelectorAll('[data-scope]').forEach((b) => {
-    b.onclick = () => startStudy(b.dataset.scope === 'all' ? 'all' : Number(b.dataset.scope));
+    b.onclick = () => startStudy(parseScope(b.dataset.scope));
+  });
+
+  $app.querySelectorAll('[data-force-study]').forEach((b) => {
+    b.onclick = () => openForceStudyModal(parseScope(b.dataset.forceStudy));
   });
 
   // Botones de Modo Test
   $app.querySelectorAll('[data-test]').forEach((b) => {
-    b.onclick = () => openTestModal(b.dataset.test === 'all' ? 'all' : Number(b.dataset.test));
+    b.onclick = () => openTestModal(parseScope(b.dataset.test));
   });
 
   const btnQuickFull = $app.querySelector('#btn-quick-full-test');
@@ -465,6 +521,7 @@ function showDashboard() {
     btnCustom.onclick = () => openTestModal('all');
   }
 
+  $app.querySelector('#btn-stats').onclick = () => showStats();
   $app.querySelector('#btn-ranking').onclick = () => showRanking();
   $app.querySelector('#banner-ranking').onclick = () => showRanking();
   $app.querySelector('#switch').onclick = () => {
@@ -484,6 +541,171 @@ function showDashboard() {
   };
 }
 
+// ---------------- Modal y Configuración de Sesión Forzada de Estudio ----------------
+
+function openForceStudyModal(scope = 'all') {
+  const ids = scopeIds(scope);
+  const totalAvailable = ids.length;
+  if (!totalAvailable) return toast('No hay preguntas disponibles en este ámbito.');
+
+  const presets = [10, 20, 30, 50].filter((n) => n < totalAvailable);
+  const defaultCount = presets[0] || totalAvailable;
+
+  const existingBackdrop = document.querySelector('#force-study-modal-backdrop');
+  if (existingBackdrop) existingBackdrop.remove();
+
+  const backdrop = document.createElement('div');
+  backdrop.id = 'force-study-modal-backdrop';
+  backdrop.className = 'modal-backdrop';
+
+  backdrop.innerHTML = `
+    <div class="modal-card stack">
+      <div class="row spread" style="align-items:flex-start">
+        <div>
+          <div class="row" style="gap:8px;align-items:center">
+            <span style="font-size:1.35rem">⚡</span>
+            <h2 style="margin:0;font-size:1.25rem">Forzar Sesión de Estudio</h2>
+          </div>
+          <div class="muted small" style="margin-top:2px">${esc(scopeName(scope))} · <b>${totalAvailable}</b> preguntas disponibles</div>
+        </div>
+        <button class="link" id="btn-close-force-modal" style="font-size:1.4rem;line-height:1;padding:0 4px">✕</button>
+      </div>
+
+      <p class="small muted" style="margin:6px 0 0;line-height:1.5">
+        Estudia tarjetas sin esperar a que venzan. Puedes reprogramar tus intervalos SRS con Anki SM-2 para acelerar tu retención o hacer un repaso intensivo de tus puntos débiles.
+      </p>
+
+      <div style="margin-top:14px">
+        <label class="small muted" style="font-weight:700;display:block;margin-bottom:6px">¿CUÁNTAS TARJETAS QUIERES ESTUDIAR?</label>
+        <div class="chip-group">
+          ${presets.map((p, i) => `<button class="chip-btn ${i === 0 ? 'active' : ''}" data-force-chip="${p}">${p} tarjetas</button>`).join('')}
+          <button class="chip-btn ${presets.length === 0 ? 'active' : ''}" data-force-chip="${totalAvailable}">⭐ Todas (${totalAvailable})</button>
+        </div>
+        
+        <div class="row" style="margin-top:10px;gap:8px">
+          <span class="small muted">Número exacto:</span>
+          <input type="number" id="force-count-input" min="1" max="${totalAvailable}" value="${defaultCount}" style="width:110px;font-weight:700;text-align:center">
+          <span class="small muted">de ${totalAvailable}</span>
+        </div>
+      </div>
+
+      <div style="margin-top:14px">
+        <label class="small muted" style="font-weight:700;display:block;margin-bottom:6px">CRITERIO DE PRIORIDAD Y SELECCIÓN</label>
+        <div class="stack" style="gap:8px">
+          <label class="row" style="cursor:pointer;gap:10px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card)">
+            <input type="radio" name="force-strategy" value="due" checked>
+            <div style="flex:1">
+              <div style="font-weight:600;font-size:.9rem">🕒 Próximas a vencer primero <span class="tag" style="font-size:.7rem;margin-left:4px">Recomendado</span></div>
+              <div class="muted small">Adelanta los repasos cuya fecha de vencimiento está más próxima en el tiempo.</div>
+            </div>
+          </label>
+          <label class="row" style="cursor:pointer;gap:10px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card)">
+            <input type="radio" name="force-strategy" value="hard">
+            <div style="flex:1">
+              <div style="font-weight:600;font-size:.9rem">🧠 Mayor dificultad y más falladas</div>
+              <div class="muted small">Prioriza tarjetas con menor facilidad (ease) o con más fallos históricos.</div>
+            </div>
+          </label>
+          <label class="row" style="cursor:pointer;gap:10px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card)">
+            <input type="radio" name="force-strategy" value="random">
+            <div style="flex:1">
+              <div style="font-weight:600;font-size:.9rem">🎲 Aleatorio / Temario completo</div>
+              <div class="muted small">Mezcla libremente preguntas de todo el temario seleccionado.</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px" class="stack">
+        <label class="row" style="cursor:pointer;gap:10px;align-items:flex-start">
+          <input type="checkbox" id="force-reschedule-cb" checked style="margin-top:3px">
+          <div class="small">
+            <b>Reprogramar con algoritmo SRS (SM-2):</b>
+            <div class="muted" style="margin-top:2px">Al calificar con los 4 botones de Anki (Otra vez, Difícil, Bien, Fácil), el nuevo intervalo se recalcula a partir de hoy, adelantando tu curva de retención real.</div>
+          </div>
+        </label>
+      </div>
+
+      <div class="row spread" style="margin-top:18px">
+        <button class="link" id="btn-cancel-force-modal">Cancelar</button>
+        <button class="btn-force-study" id="btn-start-force-study-run" style="padding:10px 22px;font-size:1rem">
+          ⚡ Comenzar Sesión Forzada
+        </button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(backdrop);
+
+  const inputEl = backdrop.querySelector('#force-count-input');
+  const chipBtns = backdrop.querySelectorAll('[data-force-chip]');
+
+  const syncActiveChip = (val) => {
+    chipBtns.forEach((b) => {
+      b.classList.toggle('active', Number(b.dataset.forceChip) === val);
+    });
+  };
+
+  chipBtns.forEach((btn) => {
+    btn.onclick = () => {
+      const val = Number(btn.dataset.forceChip);
+      inputEl.value = val;
+      syncActiveChip(val);
+    };
+  });
+
+  inputEl.oninput = () => {
+    let val = Number(inputEl.value);
+    if (val > totalAvailable) val = totalAvailable;
+    if (val < 1) val = 1;
+    syncActiveChip(val);
+  };
+
+  const closeModal = () => backdrop.remove();
+  backdrop.querySelector('#btn-close-force-modal').onclick = closeModal;
+  backdrop.querySelector('#btn-cancel-force-modal').onclick = closeModal;
+  backdrop.onclick = (e) => {
+    if (e.target === backdrop) closeModal();
+  };
+
+  backdrop.querySelector('#btn-start-force-study-run').onclick = () => {
+    let count = Math.min(totalAvailable, Math.max(1, Number(inputEl.value) || totalAvailable));
+    const strategyRadio = backdrop.querySelector('input[name="force-strategy"]:checked');
+    const strategy = strategyRadio ? strategyRadio.value : 'due';
+    const reschedule = backdrop.querySelector('#force-reschedule-cb').checked;
+    closeModal();
+    startForceStudy(scope, count, strategy, reschedule);
+  };
+}
+
+function startForceStudy(scope, count, strategy = 'due', reschedule = true) {
+  stopTimer();
+  state.scope = scope;
+  state.practice = false;
+  state.testMode = null;
+  state.lastId = null;
+
+  const ids = scopeIds(scope);
+  if (!ids.length) return toast('No hay preguntas disponibles en este ámbito.');
+
+  const log = (state.user && state.user.log) ? state.user.log : [];
+  const cardIds = SRS.getForcedQueue(ids, state.user.cards, count, strategy, log);
+
+  if (!cardIds.length) return toast('No se encontraron preguntas para la sesión.');
+
+  state.forceStudy = {
+    active: true,
+    scope,
+    strategy,
+    reschedule: !!reschedule,
+    cardIds,
+    currentIndex: 0,
+    total: cardIds.length,
+    results: [],
+  };
+
+  nextCard();
+}
+
 // ---------------- Modal y Configuración del Modo Test ----------------
 
 function openTestModal(scope = 'all') {
@@ -491,8 +713,11 @@ function openTestModal(scope = 'all') {
   const totalAvailable = ids.length;
   if (!totalAvailable) return toast('No hay preguntas disponibles en este ámbito.');
 
+  const isFinalMock = scope === 'final-mock';
   // Determinar opciones de preset recomendadas
-  const presets = [10, 20, 30, 50].filter((n) => n < totalAvailable);
+  const presets = isFinalMock
+    ? [10, 20, 30].filter((n) => n < totalAvailable)
+    : [10, 20, 30, 50].filter((n) => n < totalAvailable);
 
   const existingBackdrop = document.querySelector('#test-modal-backdrop');
   if (existingBackdrop) existingBackdrop.remove();
@@ -505,8 +730,8 @@ function openTestModal(scope = 'all') {
     <div class="modal-card stack">
       <div class="row spread" style="align-items:flex-start">
         <div>
-          <h2 style="margin:0;font-size:1.25rem">📝 Configurar Test de Examen</h2>
-          <div class="muted small" style="margin-top:2px">${esc(scopeName(scope))} · <b>${totalAvailable}</b> preguntas disponibles</div>
+          <h2 style="margin:0;font-size:1.25rem">${isFinalMock ? '🎓 Configurar Final Mock Exam' : '📝 Configurar Test de Examen'}</h2>
+          <div class="muted small" style="margin-top:2px">${esc(isFinalMock ? 'DATA 51000 Practice Final Exam' : scopeName(scope))} · <b>${totalAvailable}</b> preguntas disponibles${isFinalMock ? ' (1 punto c/u)' : ''}</div>
         </div>
         <button class="link" id="btn-close-modal" style="font-size:1.4rem;line-height:1;padding:0 4px">✕</button>
       </div>
@@ -514,7 +739,7 @@ function openTestModal(scope = 'all') {
       <div style="margin-top:14px">
         <label class="small muted" style="font-weight:700;display:block;margin-bottom:6px">¿CUÁNTAS PREGUNTAS QUIERES EN EL TEST?</label>
         <div class="chip-group">
-          <button class="chip-btn active" data-chip="${totalAvailable}">⭐ Todas (${totalAvailable})</button>
+          <button class="chip-btn active" data-chip="${totalAvailable}">${isFinalMock ? `⭐ Examen completo (${totalAvailable})` : `⭐ Todas (${totalAvailable})`}</button>
           ${presets.map((p) => `<button class="chip-btn" data-chip="${p}">${p} preguntas</button>`).join('')}
         </div>
         
@@ -600,6 +825,8 @@ function startTest(scope, count, immediateFeedback = true, shuffle = true) {
       const j = Math.floor(Math.random() * (i + 1));
       [pool[i], pool[j]] = [pool[j], pool[i]];
     }
+  } else {
+    pool = [...pool].sort((a, b) => (a.examOrder || 999) - (b.examOrder || 999));
   }
 
   const selectedQuestions = pool.slice(0, Math.min(count, pool.length));
@@ -951,9 +1178,18 @@ function showTestResults() {
       <div style="font-size:2.6rem;line-height:1;margin-bottom:6px">
         ${score >= 9 ? '👑 🥇' : score >= 7 ? '👏 🎯' : score >= 5 ? '👍 📚' : '⚠️ 📖'}
       </div>
-      <div class="muted small" style="text-transform:uppercase;font-weight:700;letter-spacing:.04em">Tu nota final en el test</div>
+      <div class="muted small" style="text-transform:uppercase;font-weight:700;letter-spacing:.04em">
+        ${tm.scope === 'final-mock' ? 'Puntuación Final Mock Exam' : 'Tu nota final en el test'}
+      </div>
       <div class="test-hero-score" style="color:${grade.color}">
         ${score}<span style="font-size:1.5rem;font-weight:600;color:var(--muted)"> / 10</span>
+        ${
+          tm.scope === 'final-mock' || (tm.total === 40 && tm.questions.every((q) => q.exam === 'final-mock'))
+            ? `<div style="font-size:1.15rem;font-weight:700;color:var(--muted);margin-top:4px">
+                 Puntos: <b style="color:${grade.color}">${correctCount}</b> / ${total} puntos (1 punto por pregunta)
+               </div>`
+            : ''
+        }
       </div>
       <div><span class="badge-grade ${grade.cls}" style="font-size:.9rem;padding:4px 14px">${grade.text}</span></div>
       
@@ -1164,6 +1400,7 @@ function renderRankingView(allUsersData) {
             <div class="podium-score" style="color:${top2.metrics.grade.color}">${top2.metrics.expectedScore}<span style="font-size:.85rem;color:var(--muted)">/10</span></div>
             <div style="margin-top:4px"><span class="badge-grade ${top2.metrics.grade.cls}">${top2.metrics.grade.text}</span></div>
             <div class="small muted" style="margin-top:6px">${top2.metrics.coverage}% visto · ${top2.metrics.totalReviews} reps</div>
+            ${state.user && !top2.isMe ? `<button class="btn-compare" style="margin-top:8px" data-compare-peer="${esc(top2.id)}">Comparar</button>` : ''}
           </div>`
             : ''
         }
@@ -1177,6 +1414,7 @@ function renderRankingView(allUsersData) {
             <div class="podium-score" style="color:${top1.metrics.grade.color};font-size:1.8rem">${top1.metrics.expectedScore}<span style="font-size:1rem;color:var(--muted)">/10</span></div>
             <div style="margin-top:4px"><span class="badge-grade ${top1.metrics.grade.cls}">${top1.metrics.grade.text}</span></div>
             <div class="small muted" style="margin-top:6px">${top1.metrics.coverage}% visto · ${top1.metrics.totalReviews} reps</div>
+            ${state.user && !top1.isMe ? `<button class="btn-compare" style="margin-top:8px" data-compare-peer="${esc(top1.id)}">Comparar</button>` : ''}
           </div>`
             : ''
         }
@@ -1190,6 +1428,7 @@ function renderRankingView(allUsersData) {
             <div class="podium-score" style="color:${top3.metrics.grade.color}">${top3.metrics.expectedScore}<span style="font-size:.85rem;color:var(--muted)">/10</span></div>
             <div style="margin-top:4px"><span class="badge-grade ${top3.metrics.grade.cls}">${top3.metrics.grade.text}</span></div>
             <div class="small muted" style="margin-top:6px">${top3.metrics.coverage}% visto · ${top3.metrics.totalReviews} reps</div>
+            ${state.user && !top3.isMe ? `<button class="btn-compare" style="margin-top:8px" data-compare-peer="${esc(top3.id)}">Comparar</button>` : ''}
           </div>`
             : ''
         }
@@ -1297,8 +1536,9 @@ function renderRankingView(allUsersData) {
               ${m.expectedScore}<span class="ranking-score-denom">/10</span>
             </div>
             <span class="badge-grade ${m.grade.cls}">${m.grade.text}</span>
-            <div style="font-size:.75rem;color:var(--muted);margin-top:4px">
-              ${isExpanded ? '▲ Ocultar' : '▼ Detalle'}
+            <div class="row" style="gap:6px;margin-top:4px;justify-content:flex-end">
+              ${state.user && !u.isMe ? `<button class="btn-compare" data-compare-peer="${esc(u.id)}" title="Comparar tus estadísticas con ${esc(u.name)}">Comparar</button>` : ''}
+              <span style="font-size:.75rem;color:var(--muted)">${isExpanded ? '▲ Ocultar' : '▼ Detalle'}</span>
             </div>
           </div>
         </div>
@@ -1308,12 +1548,15 @@ function renderRankingView(allUsersData) {
     .join('');
 
   $app.innerHTML = `
-    <div class="header row spread">
+    <div class="header row spread" style="flex-wrap:wrap;gap:10px">
       <div>
         <h1>🏆 Ranking de la Clase</h1>
         <div class="muted small">${esc(scopeLabel)} · predicción de nota en el examen</div>
       </div>
-      <button class="link" id="rank-back-btn">← Volver al estudio</button>
+      <div class="row" style="gap:8px;flex-wrap:wrap">
+        ${state.user ? '<button class="btn-ranking" id="btn-ranking-stats">📊 Estadísticas</button>' : ''}
+        <button class="link" id="rank-back-btn">← Volver al estudio</button>
+      </div>
     </div>
 
     <div class="tabs">
@@ -1385,6 +1628,15 @@ function renderRankingView(allUsersData) {
     };
   });
 
+  const btnRankStats = $app.querySelector('#btn-ranking-stats');
+  if (btnRankStats) btnRankStats.onclick = () => showStats({ subjectId: currentScope });
+  $app.querySelectorAll('[data-compare-peer]').forEach((btn) => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      showStats({ subjectId: currentScope, peerId: btn.dataset.comparePeer });
+    };
+  });
+
   const sortSelect = $app.querySelector('#rank-sort-select');
   if (sortSelect) {
     sortSelect.onchange = (e) => {
@@ -1419,6 +1671,7 @@ function shuffledOrder(q) {
 function startStudy(scope) {
   state.scope = scope;
   state.practice = false;
+  state.forceStudy = null;
   state.lastId = null;
   state.testMode = null;
   nextCard();
@@ -1428,7 +1681,13 @@ function nextCard() {
   stopTimer();
   const ids = scopeIds(state.scope);
   let id;
-  if (state.practice) {
+  if (state.forceStudy && state.forceStudy.active) {
+    const fs = state.forceStudy;
+    if (fs.currentIndex >= fs.cardIds.length) {
+      return showForceStudyDone();
+    }
+    id = fs.cardIds[fs.currentIndex];
+  } else if (state.practice) {
     const pool = ids.length > 1 ? ids.filter((x) => x !== state.lastId) : ids;
     id = pool[Math.floor(Math.random() * pool.length)];
   } else {
@@ -1441,11 +1700,19 @@ function nextCard() {
 
 function topBar() {
   const c = SRS.counts(scopeIds(state.scope), state.user.cards);
+  const isForced = !!(state.forceStudy && state.forceStudy.active);
   return `<div class="row spread header">
     <button class="link" id="back">← Volver</button>
-    <span class="tag">${esc(state.scope === 'all' ? 'Global' : 'Tema ' + state.scope)}</span>
+    <div class="row" style="gap:6px;align-items:center">
+      <span class="tag">${esc(state.scope === 'all' ? 'Global' : (state.scope === 'final-mock' ? 'Final Mock Exam' : 'Tema ' + state.scope))}</span>
+      ${isForced ? '<span class="tag tag-forced">⚡ Sesión Forzada</span>' : ''}
+    </div>
     ${
-      state.practice
+      isForced
+        ? `<div class="small muted" style="font-weight:600">
+            Pregunta <b style="color:var(--text)">${state.forceStudy.currentIndex + 1}</b> de <b>${state.forceStudy.total}</b>
+           </div>`
+        : state.practice
         ? '<span class="muted small">práctica</span>'
         : `<div class="counts" title="Nuevas · Aprendiendo · Repaso">
       <span class="n-new">${c.new}</span><span class="n-learn">${c.dueLearn}</span><span class="n-review">${c.dueReview}</span></div>`
@@ -1473,12 +1740,15 @@ function renderCard() {
     })
     .join('');
 
+  const isForced = !!(state.forceStudy && state.forceStudy.active);
+  const isForcedNoReschedule = isForced && !state.forceStudy.reschedule;
+
   let after = '';
   if (answered) {
     const fb = `<div class="feedback ${correct ? 'ok' : 'bad'}">
       <b class="${correct ? 'ok' : 'bad'}">${correct ? '✓ ¡Correcto!' : `✗ Incorrecto. ${[].concat(q.answer).length > 1 ? 'Eran' : 'Era'}: ${[].concat(q.answer).map((i) => esc(q.options[i])).join(' · ')}`}</b>
       ${q.explain ? `<p>${rich(q.explain)}</p>` : ''}</div>`;
-    if (state.practice) {
+    if (state.practice || isForcedNoReschedule) {
       after = fb + `<div class="grades one"><button class="primary" data-next>Siguiente</button></div>`;
     } else {
       const pv = SRS.preview(card);
@@ -1492,8 +1762,25 @@ function renderCard() {
   }
 
   const isNew = card.state === 'new';
+  const forcedProgressPct = isForced ? (((state.forceStudy.currentIndex + (answered ? 1 : 0)) / state.forceStudy.total) * 100) : 0;
+
   $app.innerHTML = `${topBar()}
-    ${state.practice ? '<div class="banner">Modo práctica: tus respuestas cuentan en el historial, pero no cambian cuándo vuelve cada tarjeta.</div>' : ''}
+    ${
+      isForced
+        ? `<div class="test-progress-bar" style="margin-bottom:12px">
+            <div class="test-progress-fill" style="width:${forcedProgressPct}%;background:linear-gradient(90deg, #7c3aed 0%, #a855f7 100%)"></div>
+          </div>
+          <div class="banner" style="background:color-mix(in srgb, #7c3aed 10%, var(--card));border:1px solid color-mix(in srgb, #7c3aed 30%, transparent);color:var(--text)">
+            ${
+              state.forceStudy.reschedule
+                ? '⚡ <b>Sesión forzada con reprogramación SRS:</b> tus respuestas recalculan los intervalos espaciados adelantando el aprendizaje en tu memoria.'
+                : '⚡ <b>Sesión forzada (solo repaso):</b> tus respuestas cuentan en el historial sin modificar las fechas ni intervalos programados.'
+            }
+          </div>`
+        : state.practice
+        ? '<div class="banner">Modo práctica: tus respuestas cuentan en el historial, pero no cambian cuándo vuelve cada tarjeta.</div>'
+        : ''
+    }
     <div class="card">
       <div class="row spread small muted"><span>${esc(topicName(q.topic))}</span>
         <span>${isNew ? '<span class="n-new">nueva</span>' : SRS.isLearning(card) ? '<span class="n-learn">aprendiendo</span>' : '<span class="n-review">repaso</span>'}</span></div>
@@ -1511,7 +1798,13 @@ function renderCard() {
         : `Teclas: 1–${order.length} o ${LETTERS.slice(0, order.length).split('').join('/')}${multi ? ' para marcar · Enter para comprobar' : ''}`
     }</div>`;
 
-  $app.querySelector('#back').onclick = showDashboard;
+  $app.querySelector('#back').onclick = () => {
+    if (state.forceStudy && state.forceStudy.active) {
+      if (!confirm('¿Quieres salir de la sesión forzada de estudio?')) return;
+      state.forceStudy = null;
+    }
+    showDashboard();
+  };
   $app.querySelectorAll('[data-opt]').forEach((b) => (b.onclick = () => answer(Number(b.dataset.opt))));
   $app.querySelectorAll('[data-rate]').forEach((b) => (b.onclick = () => rate(b.dataset.rate)));
   const check = $app.querySelector('[data-check]');
@@ -1545,13 +1838,50 @@ function checkMulti() {
 async function rate(rating) {
   const { id, correct } = state.current;
   const { user } = state;
-  const body = { qid: id, rating, correct, practice: state.practice };
-  if (!state.practice) {
-    const next = SRS.schedule(user.cards[id] || SRS.newCard(), rating);
+  const isForced = !!(state.forceStudy && state.forceStudy.active);
+  const shouldReschedule = isForced ? state.forceStudy.reschedule : !state.practice;
+
+  const oldCard = user.cards[id] || SRS.newCard();
+  let next = null;
+
+  if (shouldReschedule) {
+    next = SRS.schedule(oldCard, rating);
     user.cards[id] = next;
+  }
+
+  const isPracticeLog = isForced ? !state.forceStudy.reschedule : state.practice;
+
+  const body = {
+    qid: id,
+    rating,
+    correct,
+    practice: isPracticeLog,
+  };
+  if (shouldReschedule && next) {
     body.card = next;
   }
-  user.log.push({ t: Date.now(), qid: id, rating, correct, practice: state.practice });
+
+  user.log.push({
+    t: Date.now(),
+    qid: id,
+    rating,
+    correct,
+    practice: isPracticeLog,
+    forced: isForced,
+  });
+
+  if (isForced) {
+    state.forceStudy.results.push({
+      qid: id,
+      rating,
+      correct,
+      oldIvl: oldCard.ivl || 0,
+      newIvl: next ? next.ivl : (oldCard.ivl || 0),
+      rescheduled: shouldReschedule,
+    });
+    state.forceStudy.currentIndex++;
+  }
+
   state.lastId = id;
   call('POST', `/api/users/${user.id}/review`, body).catch((e) => toast('No se pudo guardar: ' + e.message));
   nextCard();
@@ -1565,14 +1895,19 @@ function showDone() {
       <div style="font-size:2.5rem">🎉</div>
       <h2 style="margin-top:6px">¡Al día con ${esc(scopeName(state.scope))}!</h2>
       <p class="muted">No te toca ninguna tarjeta ahora.${wait ? ` La próxima vuelve en <b>${wait}</b>.` : ''}</p>
-      <div class="row" style="justify-content:center;flex-wrap:wrap">
-        <button class="primary" id="practice">Practicar igualmente</button>
+      <div class="row" style="justify-content:center;flex-wrap:wrap;gap:10px">
+        <button class="primary btn-force-study" id="force-study-btn">⚡ Forzar sesión de estudio</button>
+        <button id="practice">Practicar al azar</button>
         <button id="home">Volver al panel</button>
       </div>
-      <p class="muted small">«Practicar igualmente» te pregunta al azar sin cambiar la programación (útil la víspera del examen).</p>
+      <p class="muted small" style="margin-top:14px;max-width:520px;margin-left:auto;margin-right:auto;line-height:1.5">
+        <b>⚡ Forzar sesión:</b> adelanta tarjetas que vencerán próximamente o repasa tus puntos débiles recalculando y consolidando tus intervalos de memoria.
+      </p>
     </div>`;
   $app.querySelector('#back').onclick = showDashboard;
   $app.querySelector('#home').onclick = showDashboard;
+  const forceBtn = $app.querySelector('#force-study-btn');
+  if (forceBtn) forceBtn.onclick = () => openForceStudyModal(state.scope);
   $app.querySelector('#practice').onclick = () => {
     state.practice = true;
     nextCard();
@@ -1581,6 +1916,70 @@ function showDone() {
   state.timer = setInterval(() => {
     if (SRS.pickNext(scopeIds(state.scope), state.user.cards, Date.now())) nextCard();
   }, 15000);
+}
+
+function showForceStudyDone() {
+  const fs = state.forceStudy;
+  if (!fs) return showDashboard();
+
+  const results = fs.results || [];
+  const total = results.length || fs.total;
+  const correctCount = results.filter((r) => r.correct).length;
+  const pct = total ? Math.round((correctCount / total) * 100) : 0;
+  const improvedCount = results.filter((r) => r.newIvl > r.oldIvl).length;
+
+  $app.innerHTML = `
+    <div class="row spread header">
+      <button class="link" id="fs-back">← Volver al panel</button>
+      <span class="tag tag-forced">⚡ Sesión Forzada Completada</span>
+      <div style="width:40px"></div>
+    </div>
+
+    <div class="card" style="text-align:center;padding:32px 20px">
+      <div style="font-size:3rem">⚡🎉</div>
+      <h2 style="margin-top:10px;font-size:1.5rem">¡Sesión de estudio forzada completada!</h2>
+      <p class="muted" style="max-width:500px;margin:8px auto 20px">
+        Has repasado con éxito <b>${total} tarjetas</b> en <b>${esc(scopeName(fs.scope))}</b>.
+      </p>
+
+      <div class="stats" style="max-width:480px;margin:0 auto 24px">
+        <div class="card stat">
+          <b style="color:${pct >= 80 ? 'var(--ok)' : pct >= 60 ? 'var(--accent)' : 'var(--bad)'}">${correctCount}/${total}</b>
+          <span class="muted small">aciertos (${pct}%)</span>
+        </div>
+        <div class="card stat">
+          <b style="color:var(--review)">+${improvedCount}</b>
+          <span class="muted small">intervalos ampliados</span>
+        </div>
+        <div class="card stat">
+          <b style="color:#7c3aed">${fs.reschedule ? 'SRS Activo' : 'Repaso'}</b>
+          <span class="muted small">${fs.reschedule ? 'Tarjetas reprogramadas' : 'Sin alterar fechas'}</span>
+        </div>
+      </div>
+
+      <div class="row" style="justify-content:center;flex-wrap:wrap;gap:10px">
+        <button class="btn-force-study" id="fs-again" style="padding:10px 20px;font-size:1rem">
+          ⚡ Otra tanda forzada
+        </button>
+        <button class="primary" id="fs-home" style="padding:10px 20px">
+          Volver al panel
+        </button>
+      </div>
+    </div>`;
+
+  $app.querySelector('#fs-back').onclick = () => {
+    state.forceStudy = null;
+    showDashboard();
+  };
+  $app.querySelector('#fs-home').onclick = () => {
+    state.forceStudy = null;
+    showDashboard();
+  };
+  $app.querySelector('#fs-again').onclick = () => {
+    const scope = fs.scope;
+    state.forceStudy = null;
+    openForceStudyModal(scope);
+  };
 }
 
 // ---------------- Atajos de Teclado ----------------
@@ -1640,7 +2039,7 @@ document.addEventListener('keydown', (e) => {
     if (pos >= 0 && pos < cur.order.length) answer(cur.order[pos]);
     return;
   }
-  if (state.practice || !cur.correct) {
+  if (state.practice || (state.forceStudy && !state.forceStudy.reschedule) || !cur.correct) {
     if (k === ' ' || k === 'enter' || k === '1') {
       e.preventDefault();
       rate(cur.correct ? 'good' : 'again');
@@ -1658,3 +2057,7 @@ document.addEventListener('keydown', (e) => {
 
 const saved = localStorage.getItem('lewis-quiz-user');
 saved ? openUser(saved) : showUsers();
+
+window.startStudy = startStudy;
+window.startForceStudy = startForceStudy;
+window.openForceStudyModal = openForceStudyModal;
