@@ -214,6 +214,9 @@ const SP_QUESTIONS = [
   { id: 't7-05', topic: 7, q: "The following Python statement:\ndf2['attr1'].groupby(df2['attr2']).mean()\nproduces a table of the mean values of attr2.",
     options: TF, answer: 1,
     explain: 'Calcula la media de attr1 para cada valor de attr2. attr2 solo sirve de clave de agrupación.' },
+  { id: 't7-06', topic: 7, q: 'An operation that produces a scalar value from an array of values is called',
+    options: ['An aggregation', 'A transformation', 'A pivot', 'A cross tabulation'], answer: 0,
+    explain: 'Una agregación (aggregation) produce un único valor escalar a partir de un array de valores (por ejemplo mean, sum o count), a diferencia de una transformación que devuelve un array con la misma forma.' },
 ];
 
 SUBJECTS.push({ id: 'sp', name: 'Statistical Programming', topics: SP_TOPICS, questions: SP_QUESTIONS });
