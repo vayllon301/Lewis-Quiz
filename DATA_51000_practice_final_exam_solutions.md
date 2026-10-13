@@ -1,507 +1,590 @@
-# DATA 51000 — Data Mining: Practice Final Exam Review
+# DATA 51000 — Data Mining and Analytics: Practice Final Exam Solutions
 
-Official solutions and study notes for the 40 questions of the **DATA 51000 Practice Final Exam** (1 point each, total 40 points).
+Official solutions, verified answer key, and comprehensive study guide for the **DATA 51000 Practice Final Exam** (40 questions | 1 point each).
+
+## Quick Answer Key Table
+
+| Q# | Correct Answer | Topic / Concept |
+|:---:|:---:|:---|
+| **Q1** | **A** | AdWords & BALANCE Algorithm |
+| **Q2** | **A** | Collaborative Filtering & Popularity Bias |
+| **Q3** | **B** | Information Retrieval (TF-IDF) |
+| **Q4** | **B** | Graph Mining (Maximal vs. Maximum Cliques) |
+| **Q5** | **A** | Recommender Systems (Mean-Centered Cosine Similarity) |
+| **Q6** | **A, B** | Network Analysis (Small-World Networks) |
+| **Q7** | **C** | Decision Trees (Entropy & Information Gain) |
+| **Q8** | **A** | Clustering (1D k-Means Convergence) |
+| **Q9** | **B** | Association Rules (Support Count) |
+| **Q10** | **A** | Data Fundamentals (Data Instance Definition) |
+| **Q11** | **A** | Clustering Algorithm Selection (k-Means) |
+| **Q12** | **B** | Data Structures (Semi-Structured JSON) |
+| **Q13** | **A** | Recommender Systems (Content-Based Limitations) |
+| **Q14** | **A** | Data Warehousing (OLAP vs. OLTP) |
+| **Q15** | **A** | Frequent Itemsets (Triples vs. Triangular Matrix Memory) |
+| **Q16** | **A** | Link Analysis (HITS Hubs & Authorities) |
+| **Q17** | **C** | Model Evaluation (Classification Recall) |
+| **Q18** | **A** | Hierarchical Clustering (Agglomerative Dendrogram) |
+| **Q19** | **A** | Frequent Itemset Mining (PCY Memory Efficiency) |
+| **Q20** | **A** | Ensemble Learning (AdaBoost Reweighting) |
+| **Q21** | **A** | Similarity Measures (Jaccard Similarity for Sets) |
+| **Q22** | **A** | Hierarchical Clustering (Centroid Linkage) |
+| **Q23** | **B** | Model Generalization & Overfitting |
+| **Q24** | **A** | Online Algorithms (Greedy Bipartite Matching Ratios) |
+| **Q25** | **A** | Distributed Computing (Hadoop HDFS Failure Detection) |
+| **Q26** | **A** | MapReduce Patterns (Global Maximum Computation) |
+| **Q27** | **B** | Attribute Types (Ordinal Data) |
+| **Q28** | **A** | Online Advertising (CTR Exploration vs. Exploitation) |
+| **Q29** | **C** | Cluster Evaluation (Silhouette Coefficient) |
+| **Q30** | **A** | Association Rules (MS-Apriori MIS Ordering) |
+| **Q31** | **B** | Online Advertising (AdWords Nature) |
+| **Q32** | **A** | Recommender Systems (Content-Based User Profiles) |
+| **Q33** | **A** | Databases & SQL (JOIN and DISTINCT) |
+| **Q34** | **A** | Similarity Measures (Jaccard Set Comparison) |
+| **Q35** | **A** | LSH & Minhashing (Minhash Signatures) |
+| **Q36** | **A** | Collaborative Filtering (Domain Independence / Advantages) |
+| **Q37** | **A** | Association Rules (MS-Apriori Rare Item Problem) |
+| **Q38** | **A** | Ensemble Learning (Bagging / Bootstrap Aggregation) |
+| **Q39** | **A** | Online Advertising (BALANCE Selection Criterion) |
+| **Q40** | **A** | Distributed Computing (MapReduce vs. OLAP Latency) |
 
 ---
 
 ### Question 1 (1 point)
-**Three advertisers bid on search terms. A bids on "car" and "insurance"; B bids on "car"; C bids on "insurance". If the BALANCE algorithm is used, which advertiser will be preferred when budgets are equal and a "car" query arrives?**
+
+**Three advertisers bid on search terms. A bids on p, B bids on p and q, and C bids on p, q, and r. Each has a budget of $2. For the stream p, p, q, q, r, r, which sequence is possible under BALANCE if ties are resolved in the order C, B, A?**
+
 - **Options:**
-  - A) Only B
-  - B) Only A
-  - C) Either A or B
-  - D) C
-- **Answer:** C) Either A or B
-- **Explanation:** When budgets are equal, the BALANCE algorithm breaks ties arbitrarily (or round-robin) among eligible bidders with the maximum remaining budget. Since both A and B bid on "car", either can be allocated.
+  - **A)** C, B, C, B, _, _
+  - **B)** C, C, B, B, _, _
+  - **C)** A, A, B, B, C, C
+  - **D)** C, B, A, C, B, A
+- **Correct Answer:** A. C, B, C, B, _, _
+- **Explanation:** p→C (all tied at $2, C wins tie); p→B (A and B still at $2); q→C (B and C tied at $1); q→B (C is out of budget); r, r→unassigned (only C bids on r and C is spent).
 
 ---
 
 ### Question 2 (1 point)
-**In the context of the BALANCE algorithm, what is the competitive ratio for the worst-case scenario with two advertisers having equal budgets?**
+
+**Popularity bias in collaborative filtering can cause frequently rated items to be recommended more often than niche items.**
+
 - **Options:**
-  - A) 1/2
-  - B) 3/4
-  - C) 1 - 1/e (~0.63)
-  - D) 1
-- **Answer:** B) 3/4
-- **Explanation:** For two advertisers with equal budgets, the worst-case competitive ratio of the BALANCE algorithm is 3/4 (0.75). For large $N$ advertisers, the ratio approaches $1 - 1/e \approx 0.632$.
+  - **A)** True
+  - **B)** False
+- **Correct Answer:** A. True
+- **Explanation:** Popular items have more ratings, so they dominate neighbourhoods and predictions.
 
 ---
 
 ### Question 3 (1 point)
-**Why is advertising on the web often more effective than traditional media advertising?**
+
+**A corpus contains 8 documents. The term "cloud" occurs once in document D1 and appears in 2 documents total. Using TF = raw count and IDF = log2(N/df), what is the TF-IDF weight of "cloud" in D1?**
+
 - **Options:**
-  - A) Web ads are always cheaper
-  - B) Ads can be targeted to user interests shown by search queries or browsing
-  - C) Web ads reach everyone regardless of internet access
-  - D) Web ads cannot be blocked
-- **Answer:** B) Ads can be targeted to user interests shown by search queries or browsing
-- **Explanation:** Web search engines and platforms can deliver contextually and behaviorally targeted ads based on real-time intent revealed by queries and browsing history.
+  - **A)** 1
+  - **B)** 2
+  - **C)** 3
+  - **D)** 4
+- **Correct Answer:** B. 2
+- **Explanation:** TF = 1, IDF = log2(8/2) = log2(4) = 2, so TF-IDF = 1 × 2 = 2.
 
 ---
 
 ### Question 4 (1 point)
-**In the AdWords problem, why cannot an optimal offline matching algorithm be used directly in practice?**
+
+**A clique is a set of vertices in which every pair of vertices is connected. Every maximal clique is necessarily a maximum clique.**
+
 - **Options:**
-  - A) The offline algorithm is too simple
-  - B) Search queries arrive as an online stream and must be answered immediately without knowing future queries
-  - C) Advertisers do not set budgets
-  - D) Offline algorithms require quantum computers
-- **Answer:** B) Search queries arrive as an online stream and must be answered immediately without knowing future queries
-- **Explanation:** Search queries arrive dynamically in real time and must be served in milliseconds without knowledge of future arrivals, making this an online bipartite matching problem.
+  - **A)** True
+  - **B)** False
+- **Correct Answer:** B. False
+- **Explanation:** A maximal clique cannot be extended, but it need not be the largest clique in the graph.
 
 ---
 
 ### Question 5 (1 point)
-**What happens to an advertiser in the AdWords model when their daily budget is exhausted?**
+
+**After mean-centering user ratings, user U has ratings [1, -1] on two co-rated items and user V has ratings [-2, 2]. What is their cosine similarity?**
+
 - **Options:**
-  - A) They are charged double
-  - B) They are dropped from consideration for subsequent queries that day
-  - C) Their bids are increased automatically
-  - D) They receive free ad placements
-- **Answer:** B) They are dropped from consideration for subsequent queries that day
-- **Explanation:** Once an advertiser's budget is fully spent, they can no longer participate in auctions for subsequent queries in that billing cycle.
+  - **A)** -1
+  - **B)** 0
+  - **C)** 0.5
+  - **D)** 1
+- **Correct Answer:** A. -1
+- **Explanation:** Dot product = (1)(-2) + (-1)(2) = -4; norms = √2 · √8 = 4; cosine = -4/4 = -1 (V is exactly opposite to U).
 
 ---
 
 ### Question 6 (1 point)
-**Select all that apply. In a collaborative filtering recommender system, which of the following are true?**
+
+**Which properties are characteristic of a small-world network? (Select all that apply.)**
+
 - **Options:**
-  - A) User-user collaborative filtering finds users with similar rating patterns
-  - B) Item-item collaborative filtering often yields better quality recommendations than user-user CF when items are rated by many users
-  - C) Collaborative filtering requires detailed text descriptions of every item
-  - D) CF cannot make recommendations if two users have no items in common
-- **Answer:** A and B
-- **Explanation:** CF uses interaction patterns without requiring item text descriptions. User-user CF finds similar users, and item-item CF typically offers higher stability and quality because item average tastes change slower than user behaviors.
+  - **A)** Short average path length
+  - **B)** High clustering coefficient
+  - **C)** Every vertex has the same degree
+  - **D)** No triangles
+- **Correct Answer:** A. Short average path length and B. High clustering coefficient
+- **Explanation:** Small-world networks combine short paths with high clustering (lots of triangles). Equal degree is a regular-lattice property, not a small-world one.
 
 ---
 
 ### Question 7 (1 point)
-**Given the utility matrix where rows are users (U1, U2, U3) and columns are items (I1, I2, I3):**
-```
-     I1   I2   I3
-U1    4    ?    2
-U2    5    3    ?
-U3    ?    4    1
-```
-**After mean-centering each user's ratings (subtracting user average over known ratings), what is U1's normalized rating on I1?**
+
+**Using the data below (A: yes, yes, yes, no, no, no; Label: 0, 1, 1, 0, 0, 0), what is the information gain of attribute A for predicting the label?**
+
 - **Options:**
-  - A) 1
-  - B) 4
-  - C) 0
-  - D) 3
-- **Answer:** A) 1
-- **Explanation:** U1's known ratings are $I_1 = 4$ and $I_3 = 2$. User average $\mu = (4 + 2)/2 = 3$. The normalized centered rating for $I_1$ is $4 - 3 = 1$.
+  - **A)** 0
+  - **B)** 0.082
+  - **C)** 0.459
+  - **D)** 1
+- **Correct Answer:** C. 0.459
+- **Explanation:** H(Label) with 2 ones / 4 zeros = 0.918. A = yes: (1 zero, 2 ones) → H = 0.918, weight 3/6. A = no: all zeros → H = 0. Expected entropy = 0.459. Gain = 0.918 − 0.459 = 0.459.
 
 ---
 
 ### Question 8 (1 point)
-**After mean-centering user ratings, user U has ratings [1, -1] on two co-rated items and user V has ratings [-2, 2]. What is their cosine similarity?**
+
+**Run one-dimensional k-means with k=2 on points {2, 3, 7, 8, 9}, starting with centroids 2 and 7. What are the final clusters?**
+
 - **Options:**
-  - A) 1
-  - B) 0
-  - C) 0.5
-  - D) -1
-- **Answer:** D) -1
-- **Explanation:** Dot product $= (1)(-2) + (-1)(2) = -2 - 2 = -4$. Magnitude $\|U\| = \sqrt{1^2 + (-1)^2} = \sqrt{2}$, $\|V\| = \sqrt{(-2)^2 + 2^2} = \sqrt{8}$. Cosine similarity $= -4 / (\sqrt{2}\cdot\sqrt{8}) = -4 / \sqrt{16} = -4/4 = -1$.
+  - **A)** {2,3} and {7,8,9}
+  - **B)** {2,3,7} and {8,9}
+  - **C)** {2} and {3,7,8,9}
+  - **D)** {2,7} and {3,8,9}
+- **Correct Answer:** A. {2,3} and {7,8,9}
+- **Explanation:** First assignment gives {2,3} and {7,8,9}; new centroids 2.5 and 8 produce the same assignment, so it has converged.
 
 ---
 
 ### Question 9 (1 point)
-**What is the "cold-start problem" in recommender systems?**
+
+**Transactions are {A,B}, {A,C}, {A,B,C}, {B,C}, {A,B,C,D}. What is the support count of {A,C}?**
+
 - **Options:**
-  - A) The server takes too long to boot
-  - B) New users or new items have few or no ratings, making accurate recommendations difficult
-  - C) Recommendations can only be computed in batch overnight
-  - D) Similarity scores are zero due to floating point underflow
-- **Answer:** B) New users or new items have few or no ratings, making accurate recommendations difficult
-- **Explanation:** The cold-start problem occurs when an item or user is newly added to the platform, lacking sufficient interaction history to compute reliable correlations or similarities.
+  - **A)** 2
+  - **B)** 3
+  - **C)** 4
+  - **D)** 5
+- **Correct Answer:** B. 3
+- **Explanation:** {A,C} appears in {A,C}, {A,B,C} and {A,B,C,D} → 3.
 
 ---
 
 ### Question 10 (1 point)
-**In content-based recommendation, an item profile is typically created using:**
+
+**Which statement best defines a data instance?**
+
 - **Options:**
-  - A) Features or attributes of the item (e.g., genre, director, TF-IDF of text description)
-  - B) The item's sales rank only
-  - C) The server IP address hosting the item
-  - D) Random vectors
-- **Answer:** A) Features or attributes of the item (e.g., genre, director, TF-IDF of text description)
-- **Explanation:** Content-based systems characterize items using descriptive metadata and feature representations, such as keywords, genres, tags, or TF-IDF text features.
+  - **A)** A collection of attribute values describing one object
+  - **B)** A description of all attribute domains
+  - **C)** A group of database tables
+  - **D)** A rule for normalizing data
+- **Correct Answer:** A. A collection of attribute values describing one object
+- **Explanation:** An instance (record, object, tuple) is one row of attribute values.
 
 ---
 
 ### Question 11 (1 point)
-**Given a database of 100 transactions, itemset {A, B} appears in 20 transactions. What is the support of {A, B}?**
+
+**The number of clusters is known in advance, the data are numeric, and runtime is important. Which method is generally the most appropriate?**
+
 - **Options:**
-  - A) 0.05
-  - B) 20
-  - C) 0.20
-  - D) 5
-- **Answer:** C) 0.20
-- **Explanation:** Support is the proportion of total transactions containing the itemset: $\text{Support}(\{A, B\}) = 20 / 100 = 0.20$ (or 20%).
+  - **A)** k-means
+  - **B)** Agglomerative hierarchical clustering
+  - **C)** Divisive hierarchical clustering
+  - **D)** Apriori
+- **Correct Answer:** A. k-means
+- **Explanation:** k-means needs k up front, works on numeric data, and is roughly linear per iteration. Apriori is not a clustering method.
 
 ---
 
 ### Question 12 (1 point)
-**If support of {A, B} is 0.20 and support of {A} is 0.50, what is the confidence of the association rule A -> B?**
+
+**A JSON document always represents completely unstructured data.**
+
 - **Options:**
-  - A) 0.10
-  - B) 0.40
-  - C) 0.70
-  - D) 2.50
-- **Answer:** B) 0.40
-- **Explanation:** $\text{Confidence}(A \to B) = \text{Support}(A \cup B) / \text{Support}(A) = 0.20 / 0.50 = 0.40$ (40%).
+  - **A)** True
+  - **B)** False
+- **Correct Answer:** B. False
+- **Explanation:** JSON is semi-structured: it has keys and nesting but no fixed schema.
 
 ---
 
 ### Question 13 (1 point)
-**If support({A, B}) = 0.20, support({A}) = 0.50, and support({B}) = 0.40, what is the interest (or lift minus 1) of the rule A -> B?**
+
+**Which is a common limitation of content-based recommendation?**
+
 - **Options:**
-  - A) 0
-  - B) 0.20
-  - C) 0.50
-  - D) -0.20
-- **Answer:** A) 0
-- **Explanation:** $\text{Interest} = \text{Confidence}(A \to B) - \text{Support}(B) = 0.40 - 0.40 = 0$. Since interest is 0 (and $\text{Lift} = 0.20 / (0.50 \times 0.40) = 1.0$), A and B appear together completely independently.
+  - **A)** Overspecialization
+  - **B)** It requires ratings from every user
+  - **C)** It cannot explain recommendations
+  - **D)** It cannot use item features
+- **Correct Answer:** A. Overspecialization
+- **Explanation:** It keeps recommending items very similar to what the user already liked.
 
 ---
 
 ### Question 14 (1 point)
-**The Apriori principle states that:**
+
+**Which workload is a data warehouse primarily designed to support?**
+
 - **Options:**
-  - A) If an itemset is frequent, all its supersets must be frequent
-  - B) If an itemset is frequent, all of its non-empty subsets must also be frequent
-  - C) Association rules always have confidence 1.0
-  - D) Frequent itemsets can only contain pairs of items
-- **Answer:** B) If an itemset is frequent, all of its non-empty subsets must also be frequent
-- **Explanation:** The Apriori principle relies on the downward-closure (monotonicity) of support: any subset of a frequent itemset must also be frequent. If a subset is infrequent, its supersets cannot be frequent.
+  - **A)** Historical analysis and decision support
+  - **B)** High-volume transaction updates
+  - **C)** Operating-system backups
+  - **D)** Real-time device control
+- **Correct Answer:** A. Historical analysis and decision support
+- **Explanation:** Warehouses serve OLAP / analytical queries; OLTP systems handle transaction updates.
 
 ---
 
 ### Question 15 (1 point)
-**In the PCY algorithm, what is hashed into the hash table in the first pass?**
+
+**When the universe of possible pairs is very large but only a small fraction appears, storing observed pairs as triples can use less memory than a triangular matrix.**
+
 - **Options:**
-  - A) Individual items
-  - B) Triples of items
-  - C) All pairs of items present in each basket
-  - D) The entire basket as a single string
-- **Answer:** C) All pairs of items present in each basket
-- **Explanation:** The Park-Chen-Yu (PCY) algorithm hashes all 2-item pairs in each basket into buckets during Pass 1, converting frequent buckets into a bit-vector to prune candidate pairs in Pass 2.
+  - **A)** True
+  - **B)** False
+- **Correct Answer:** A. True
+- **Explanation:** Triples cost ~12 bytes per observed pair vs. 4 bytes for every possible pair; the triples method wins when fewer than about 1/3 of possible pairs occur.
 
 ---
 
 ### Question 16 (1 point)
-**In the HITS algorithm, the authority score of a page is proportional to the sum of the:**
+
+**In HITS, authority and hub scores are distinct quantities.**
+
 - **Options:**
-  - A) Authority scores of pages it links to
-  - B) Hub scores of pages that link to it
-  - C) PageRank scores of all web pages
-  - D) Number of outgoing links
-- **Answer:** B) Hub scores of pages that link to it
-- **Explanation:** In Kleinberg's HITS algorithm:
-  - An **authority** is pointed to by good hubs: $a(p) = \sum_{q \to p} h(q)$
-  - A **hub** points to good authorities: $h(q) = \sum_{q \to p} a(p)$
+  - **A)** True
+  - **B)** False
+- **Correct Answer:** A. True
+- **Explanation:** Each page has two separate scores: hubs point to good authorities, authorities are pointed to by good hubs.
 
 ---
 
 ### Question 17 (1 point)
-**Consider a 2-node graph: Node 1 has a directed edge to Node 2, and Node 2 has a directed edge to Node 1. With teleportation probability (1 - beta) = 0.2 (so beta = 0.8), what is the PageRank of Node 1?**
+
+**Using the test results (True: 1,1,0,1,0,1,0; Predicted: 1,0,0,1,1,1,0), what is recall for the positive class?**
+
 - **Options:**
-  - A) 0.8
-  - B) 0.5
-  - C) 0.2
-  - D) 1.0
-- **Answer:** B) 0.5
-- **Explanation:** The graph is completely symmetric ($1 \leftrightarrow 2$). Due to symmetry and conservation of total probability $\sum r_i = 1$, each node has PageRank $1/2 = 0.5$.
+  - **A)** 50%
+  - **B)** 60%
+  - **C)** 75%
+  - **D)** 80%
+- **Correct Answer:** C. 75%
+- **Explanation:** Actual positives are rows 1, 2, 4, 6. Predicted 1 for three of them (TP = 3, FN = 1). Recall = 3/4 = 75%.
 
 ---
 
 ### Question 18 (1 point)
-**What problem in PageRank does the random teleport (damping factor beta) solve?**
+
+**You want to explore an unknown number of document groups and inspect the cluster structure at several levels. Which method is most suitable?**
+
 - **Options:**
-  - A) Slow network connections
-  - B) Spider traps and dead ends (rank sinks and leaks)
-  - C) Hash collisions
-  - D) Floating point overflow
-- **Answer:** B) Spider traps and dead ends (rank sinks and leaks)
-- **Explanation:** Spider traps absorb rank without releasing it, and dead ends leak rank out of the web. The random walk teleportation jump with probability $1 - \beta$ guarantees the Markov chain is ergodic and converges to a unique stationary distribution.
+  - **A)** Hierarchical agglomerative clustering
+  - **B)** PCY
+  - **C)** Minhashing
+  - **D)** Logistic regression
+- **Correct Answer:** A. Hierarchical agglomerative clustering
+- **Explanation:** The dendrogram shows clusters at every level without fixing k in advance.
 
 ---
 
 ### Question 19 (1 point)
-**Topic-Sensitive PageRank modifies the teleport vector so that:**
+
+**If enough memory is available to count every candidate pair directly, PCY may provide little benefit over standard Apriori.**
+
 - **Options:**
-  - A) Teleports are uniform across all web pages
-  - B) Teleports only go to a preselected subset of pages relevant to a specific topic
-  - C) The damping factor is set to 0
-  - D) Only dead ends can teleport
-- **Answer:** B) Teleports only go to a preselected subset of pages relevant to a specific topic
-- **Explanation:** Topic-Sensitive (Personalized) PageRank biases the teleport vector $v$ toward a specific set of topic-related pages $S$, making search results customized to the given context.
+  - **A)** True
+  - **B)** False
+- **Correct Answer:** A. True
+- **Explanation:** PCY's hash buckets exist to save main memory in pass 2; if memory is plentiful, that saving matters little.
 
 ---
 
 ### Question 20 (1 point)
-**In graph structure analysis, what is a "dead end"?**
+
+**Which ensemble method repeatedly reweights training examples to focus on previously misclassified cases?**
+
 - **Options:**
-  - A) A node with no incoming edges
-  - B) A node with no outgoing edges
-  - C) A cycle of length 2
-  - D) A disconnected component
-- **Answer:** B) A node with no outgoing edges
-- **Explanation:** A dead end is a webpage that contains no out-links, which would cause the random surfer's probability mass to drain out of the system if not handled.
+  - **A)** AdaBoost
+  - **B)** Bagging
+  - **C)** k-nearest neighbors
+  - **D)** Naive Bayes
+- **Correct Answer:** A. AdaBoost
+- **Explanation:** Boosting (AdaBoost) increases the weights of misclassified examples each round. k-NN is not an ensemble method.
 
 ---
 
 ### Question 21 (1 point)
-**Given two points P1 = (1, 2) and P2 = (4, 6), what is the Euclidean distance between them?**
+
+**For users represented by sets of purchased items, Jaccard similarity can be used to compare the overlap between their purchase sets.**
+
 - **Options:**
-  - A) 7
-  - B) 5
-  - C) 25
-  - D) 3
-- **Answer:** B) 5
-- **Explanation:** $d(P_1, P_2) = \sqrt{(4 - 1)^2 + (6 - 2)^2} = \sqrt{3^2 + 4^2} = \sqrt{9 + 16} = \sqrt{25} = 5$.
+  - **A)** True
+  - **B)** False
+- **Correct Answer:** A. True
+- **Explanation:** Jaccard = |A ∩ B| / |A ∪ B| is exactly a set-overlap measure.
 
 ---
 
 ### Question 22 (1 point)
-**For the same points P1 = (1, 2) and P2 = (4, 6), what is the Manhattan (L1) distance?**
+
+**Using centroid linkage, begin with singleton points {1, 4, 5, 12}. Repeatedly merge the two clusters with closest centroids. If stopped at two clusters, what are they?**
+
 - **Options:**
-  - A) 5
-  - B) 7
-  - C) 1
-  - D) 12
-- **Answer:** B) 7
-- **Explanation:** $d_{L1}(P_1, P_2) = |4 - 1| + |6 - 2| = 3 + 4 = 7$.
+  - **A)** {1,4,5} and {12}
+  - **B)** {1,4} and {5,12}
+  - **C)** {1} and {4,5,12}
+  - **D)** {1,5} and {4,12}
+- **Correct Answer:** A. {1,4,5} and {12}
+- **Explanation:** Merge 4 and 5 (distance 1) → centroid 4.5. Then 1 is 3.5 from 4.5 while 12 is 7.5 away, so merge {1,4,5}. Remaining: {1,4,5} and {12}.
 
 ---
 
 ### Question 23 (1 point)
-**The Jaccard similarity between two sets S1 = {a, b, c} and S2 = {b, c, d, e} is:**
+
+**A hypothesis that perfectly fits the training set is guaranteed to generalize best to unseen data.**
+
 - **Options:**
-  - A) 2/5 = 0.4
-  - B) 2/3 = 0.67
-  - C) 3/4 = 0.75
-  - D) 2/7 = 0.29
-- **Answer:** A) 2/5 = 0.4
-- **Explanation:** Intersection $S_1 \cap S_2 = \{b, c\}$ (size 2). Union $S_1 \cup S_2 = \{a, b, c, d, e\}$ (size 5). Jaccard similarity $= 2 / 5 = 0.4$.
+  - **A)** True
+  - **B)** False
+- **Correct Answer:** B. False
+- **Explanation:** Perfect training fit often means overfitting.
 
 ---
 
 ### Question 24 (1 point)
-**The Jaccard distance between the sets S1 and S2 from the previous question is:**
+
+**What are the worst-case and best-case competitive ratios of the greedy online bipartite matching algorithm?**
+
 - **Options:**
-  - A) 0.4
-  - B) 0.6
-  - C) 0.2
-  - D) 1.0
-- **Answer:** B) 0.6
-- **Explanation:** Jaccard distance is the complement of Jaccard similarity: $d_J(S_1, S_2) = 1 - J(S_1, S_2) = 1 - 0.4 = 0.6$.
+  - **A)** 1/2 and 1
+  - **B)** 0 and 1/2
+  - **C)** 0 and 1
+  - **D)** 1 and 1
+- **Correct Answer:** A. 1/2 and 1
+- **Explanation:** Greedy always finds at least half the optimal matching and can find the optimum.
 
 ---
 
 ### Question 25 (1 point)
-**Cosine distance between two vectors u and v is defined as:**
+
+**In Hadoop Distributed File System, which signal is used by the NameNode to detect that a DataNode may have failed?**
+
 - **Options:**
-  - A) The dot product of u and v
-  - B) 1 minus the cosine of the angle between u and v
-  - C) The Euclidean distance between normalized vectors
-  - D) The angle in radians divided by pi
-- **Answer:** B) 1 minus the cosine of the angle between u and v
-- **Explanation:** Cosine distance is defined as $1 - \cos(\theta)$, where $\cos(\theta) = \frac{u \cdot v}{\|u\| \|v\|}$.
+  - **A)** Missing heartbeat messages
+  - **B)** A failed SQL query
+  - **C)** A MapReduce counter
+  - **D)** A client logout
+- **Correct Answer:** A. Missing heartbeat messages
+- **Explanation:** DataNodes send periodic heartbeats; if they stop, the NameNode marks the node dead and re-replicates its blocks.
 
 ---
 
 ### Question 26 (1 point)
-**In Minhash, the probability that minhash(C1) == minhash(C2) equals:**
+
+**What does the following MapReduce computation produce?
+Mapper: for each number x: emit("key", x)
+Reducer: m = -infinity; for each value v: if v > m: m = v; emit("max", m)**
+
 - **Options:**
-  - A) The Euclidean distance between C1 and C2
-  - B) The Jaccard similarity of C1 and C2
-  - C) 1 minus the Jaccard similarity
-  - D) The cosine similarity of C1 and C2
-- **Answer:** B) The Jaccard similarity of C1 and C2
-- **Explanation:** Under random permutations of rows, the first row where at least one of the two sets has a 1 has both sets having a 1 with probability equal to $|C_1 \cap C_2| / |C_1 \cup C_2| = \text{Sim}(C_1, C_2)$.
+  - **A)** The maximum input value
+  - **B)** The sum of the input values
+  - **C)** The number of input values
+  - **D)** The sum of squared values
+- **Correct Answer:** A. The maximum input value
+- **Explanation:** All values go to one key and the reducer keeps the running maximum.
 
 ---
 
 ### Question 27 (1 point)
-**In Locality-Sensitive Hashing with b bands of r rows each (where signature length n = b * r), two documents with Jaccard similarity s become candidate pairs with probability:**
+
+**A satisfaction rating with values poor, fair, good, and excellent is which attribute type?**
+
 - **Options:**
-  - A) 1 - (1 - s^r)^b
-  - B) (1 - s^b)^r
-  - C) s^(b*r)
-  - D) 1 - s^r
-- **Answer:** A) 1 - (1 - s^r)^b
-- **Explanation:**
-  - Probability all $r$ rows match in one band $= s^r$.
-  - Probability they don't match in that band $= 1 - s^r$.
-  - Probability they don't match in any of the $b$ bands $= (1 - s^r)^b$.
-  - Probability of matching in at least one band $= 1 - (1 - s^r)^b$.
+  - **A)** Nominal
+  - **B)** Ordinal
+  - **C)** Continuous
+  - **D)** Binary
+- **Correct Answer:** B. Ordinal
+- **Explanation:** Categories with a meaningful order but no fixed spacing are ordinal.
 
 ---
 
 ### Question 28 (1 point)
-**Using LSH with b = 20 bands and r = 5 rows, what is the approximate threshold t where the S-curve has its steepest inflection point?**
+
+**Why does estimating click-through rate create an exploration problem?**
+
 - **Options:**
-  - A) ~0.55 (computed as (1/b)^(1/r))
-  - B) ~0.80
-  - C) ~0.20
-  - D) ~0.95
-- **Answer:** A) ~0.55 (computed as (1/b)^(1/r))
-- **Explanation:** The threshold where the probability equals 0.5 is approximately $t \approx (1/b)^{1/r} = (1/20)^{1/5} \approx 0.549$.
+  - **A)** An ad must sometimes be displayed to obtain evidence about whether users will click it
+  - **B)** CTR cannot be represented numerically
+  - **C)** Clicks cannot be logged
+  - **D)** All ads have identical CTR
+- **Correct Answer:** A. An ad must sometimes be displayed to obtain evidence about whether users will click it
+- **Explanation:** This is the explore-vs-exploit trade-off: an ad that is never shown can never have its CTR estimated.
 
 ---
 
 ### Question 29 (1 point)
-**In the k-means clustering algorithm, how are cluster centers updated in each iteration?**
+
+**For point x, the average distance to its own cluster is a(x)=2 and the smallest average distance to another cluster is b(x)=5. What is the silhouette value s(x)?**
+
 - **Options:**
-  - A) By randomly choosing a data point
-  - B) By computing the mean (centroid) of all points currently assigned to each cluster
-  - C) By taking the median along each dimension
-  - D) Cluster centers are fixed and never updated
-- **Answer:** B) By computing the mean (centroid) of all points currently assigned to each cluster
-- **Explanation:** In standard Lloyd's $k$-means algorithm, each cluster center is updated by taking the mean of all data points currently assigned to that cluster.
+  - **A)** -0.6
+  - **B)** 0.4
+  - **C)** 0.6
+  - **D)** 1.5
+- **Correct Answer:** C. 0.6
+- **Explanation:** s(x) = (b − a) / max(a, b) = (5 − 2) / 5 = 0.6.
 
 ---
 
 ### Question 30 (1 point)
-**Which of the following is a key advantage of the BFR clustering algorithm over standard k-means?**
+
+**Before candidate generation in MS-Apriori, items are ordered by which quantity?**
+
 - **Options:**
-  - A) BFR finds non-spherical clusters
-  - B) BFR can cluster data that is too large to fit in main memory by making a single pass through the data
-  - C) BFR does not require specifying k
-  - D) BFR uses Manhattan distance exclusively
-- **Answer:** B) BFR can cluster data that is too large to fit in main memory by making a single pass through the data
-- **Explanation:** BFR summarizes chunks of streaming or disk-based data using compact summary statistics (Discard Set, Compressed Set, Retained Set), processing vast datasets in a single pass without loading all points into RAM.
+  - **A)** Ascending MIS value
+  - **B)** Descending MIS value
+  - **C)** Ascending support count
+  - **D)** Descending confidence
+- **Correct Answer:** A. Ascending MIS value
+- **Explanation:** MS-Apriori sorts items by increasing minimum item support (MIS) so the lowest-MIS item in an itemset comes first.
 
 ---
 
 ### Question 31 (1 point)
-**In the BFR algorithm, the Discard Set (DS) stores:**
+
+**The Adwords problem is primarily a collaborative-filtering problem.**
+
 - **Options:**
-  - A) The original data points
-  - B) Summary statistics (number of points N, sum vector SUM, and sum of squares vector SUMSQ) for points close enough to a centroid
-  - C) Outliers that should be permanently deleted
-  - D) The distance matrix between all pairs of points
-- **Answer:** B) Summary statistics (number of points N, sum vector SUM, and sum of squares vector SUMSQ) for points close enough to a centroid
-- **Explanation:** The Discard Set stores $2d + 1$ numbers per cluster ($N$, $\text{SUM}_i$, $\text{SUMSQ}_i$), enabling exact mean and variance calculations without storing raw coordinates.
+  - **A)** True
+  - **B)** False
+- **Correct Answer:** B. False
+- **Explanation:** Adwords is an online matching / budget-allocation problem.
 
 ---
 
 ### Question 32 (1 point)
-**Hierarchical agglomerative clustering starts with:**
+
+**A content-based user profile may be formed as a weighted combination of features from items the user rated.**
+
 - **Options:**
-  - A) A single cluster containing all points
-  - B) Each data point as its own individual cluster, then iteratively merges the closest pair
-  - C) k randomly chosen clusters
-  - D) A decision tree
-- **Answer:** B) Each data point as its own individual cluster, then iteratively merges the closest pair
-- **Explanation:** Agglomerative clustering is a bottom-up approach: every observation begins in its own cluster, and clusters are successively merged based on a linkage criterion until a single tree (dendrogram) remains.
+  - **A)** True
+  - **B)** False
+- **Correct Answer:** A. True
+- **Explanation:** For example, a rating-weighted average of the item feature vectors.
 
 ---
 
 ### Question 33 (1 point)
-**Which linkage criterion in hierarchical clustering measures distance between two clusters as the distance between their closest pair of points?**
+
+**Tables Student(studentID, name) and Enrollment(studentID, courseID, grade) are given. Which SQL query returns names of students with at least one grade of 90 or higher?**
+
 - **Options:**
-  - A) Complete linkage
-  - B) Single linkage
-  - C) Average linkage
-  - D) Centroid linkage
-- **Answer:** B) Single linkage
-- **Explanation:** Single linkage calculates minimum pairwise distance: $d(C_1, C_2) = \min_{x \in C_1, y \in C_2} d(x, y)$, which can lead to chaining effects.
+  - **A)** SELECT DISTINCT name FROM Student JOIN Enrollment ON Student.studentID=Enrollment.studentID WHERE grade>=90
+  - **B)** SELECT name FROM Student WHERE grade>=90
+  - **C)** SELECT Enrollment FROM Student WHERE Student.studentID=courseID
+  - **D)** SELECT name FROM Student, Enrollment WHERE name=grade AND grade>=90
+- **Correct Answer:** A. SELECT DISTINCT name FROM Student JOIN Enrollment ON Student.studentID=Enrollment.studentID WHERE grade>=90
+- **Explanation:** You need a join on studentID, and DISTINCT removes duplicate names.
 
 ---
 
 ### Question 34 (1 point)
-**What does the following MapReduce computation produce?**
-```
-Mapper:
-  for each number x:
-    emit("key", x)
 
-Reducer:
-  m = -infinity
-  for each value v:
-    if v > m: m = v
-  emit("max", m)
-```
+**Given A={1,2,3}, B={2,3,4}, and C={1,4,5}, which pair has the highest Jaccard similarity?**
+
 - **Options:**
-  - A) The maximum input value
-  - B) The sum of the input values
-  - C) The number of input values
-  - D) The sum of squared values
-- **Answer:** A) The maximum input value
-- **Explanation:** All inputs are emitted under the single key `"key"`. The reducer iterates through all values, keeping track of the largest number seen, thus emitting the global maximum.
+  - **A)** A and B
+  - **B)** A and C
+  - **C)** B and C
+  - **D)** All pairs are equal
+- **Correct Answer:** A. A and B
+- **Explanation:** J(A,B) = 2/4 = 0.5; J(A,C) = 1/5 = 0.2; J(B,C) = 1/5 = 0.2.
 
 ---
 
 ### Question 35 (1 point)
-**In MapReduce, what is the role of the Combiner?**
+
+**For the characteristic matrix below, use permutations P1=(2,1,4,3) and P2=(4,3,2,1). What is the minhash signature of Document 2? (Doc 1 = 1,0,1,0; Doc 2 = 0,1,1,1; Doc 3 = 1,1,0,0.)**
+
 - **Options:**
-  - A) It replaces the Reducer entirely
-  - B) It performs a local reduction on the map node's output to reduce the volume of data transferred over the network during shuffle
-  - C) It reads input from HDFS
-  - D) It assigns tasks to worker nodes
-- **Answer:** B) It performs a local reduction on the map node's output to reduce the volume of data transferred over the network during shuffle
-- **Explanation:** A Combiner acts as a mini-reducer directly on each Mapper worker node, aggregating intermediate key-value pairs locally to drastically reduce network transmission during the shuffle phase.
+  - **A)** (2,4)
+  - **B)** (1,3)
+  - **C)** (2,3)
+  - **D)** (1,4)
+- **Correct Answer:** A. (2,4)
+- **Explanation:** Read each permutation as a row order and take the first row in that order where Doc 2 has a 1. P1 visits row 2 first, and Doc 2 has a 1 there → 2. P2 visits row 4 first, and Doc 2 has a 1 there → 4. Signature = (2,4).
 
 ---
 
 ### Question 36 (1 point)
-**Given relations R(A, B) and S(B, C), how is a natural join R JOIN S implemented in MapReduce using a single map-reduce job?**
+
+**Which is an advantage of collaborative filtering?**
+
 - **Options:**
-  - A) Map key is A; reducer joins
-  - B) Map key is B; each mapper emits (B, ('R', A)) or (B, ('S', C)); reducer computes Cartesian product for each B
-  - C) Map key is C; reducer joins
-  - D) Cannot be done in MapReduce
-- **Answer:** B) Map key is B; each mapper emits (B, ('R', A)) or (B, ('S', C)); reducer computes Cartesian product for each B
-- **Explanation:** In standard Reduce-Side Join, tuples from both tables are keyed on the common join attribute $B$ and tagged with their table name. The reducer receives all tuples sharing key $B$ and pairs them up.
+  - **A)** It can recommend items without manually engineered item features
+  - **B)** It eliminates the new-user problem
+  - **C)** It always handles extreme sparsity well
+  - **D)** It guarantees niche items are recommended
+- **Correct Answer:** A. It can recommend items without manually engineered item features
+- **Explanation:** CF only needs the user-item interaction matrix.
 
 ---
 
 ### Question 37 (1 point)
-**In HDFS, by default how many copies of each data block are stored across different machines?**
+
+**What is the main advantage of MS-Apriori over standard Apriori?**
+
 - **Options:**
-  - A) 1
-  - B) 2
-  - C) 3
-  - D) 5
-- **Answer:** C) 3
-- **Explanation:** Default HDFS replication factor is 3 (typically: one local replica, one on a different node in the same rack, and one on a node in an entirely different rack for fault tolerance).
+  - **A)** It can discover patterns containing rare items by using item-specific minimum supports
+  - **B)** It always uses only one database pass
+  - **C)** It eliminates candidate generation
+  - **D)** It guarantees higher-confidence rules
+- **Correct Answer:** A. It can discover patterns containing rare items by using item-specific minimum supports
+- **Explanation:** Per-item minimum supports address the rare-item problem.
 
 ---
 
 ### Question 38 (1 point)
-**Given relation R(A, B), the SQL query `SELECT A, COUNT(B) FROM R GROUP BY A` is implemented in MapReduce by:**
+
+**Bagging trains multiple models on bootstrap samples and combines their predictions.**
+
 - **Options:**
-  - A) Mapper emits (A, 1); Reducer sums the 1s for each A
-  - B) Mapper emits (B, 1); Reducer sums for each B
-  - C) Mapper emits (1, A); Reducer counts
-  - D) Mapper does all the counting and Reducer is not needed
-- **Answer:** A) Mapper emits (A, 1); Reducer sums the 1s for each A
-- **Explanation:** The grouping attribute $A$ is the key emitted by the mapper with value 1 (`(A, 1)`). The reducer receives all 1s for each key $A$ and computes $\sum 1$.
+  - **A)** True
+  - **B)** False
+- **Correct Answer:** A. True
+- **Explanation:** This is the definition of bagging (bootstrap aggregating).
 
 ---
 
 ### Question 39 (1 point)
-**In TF-IDF, if term t appears in all N documents in a collection, what is its IDF value? (Using IDF = log(N / DF))**
+
+**When several eligible advertisers remain, BALANCE favors the advertiser with which property?**
+
 - **Options:**
-  - A) 1
-  - B) 0
-  - C) N
-  - D) infinity
-- **Answer:** B) 0
-- **Explanation:** When document frequency $\text{DF} = N$, $\text{IDF} = \log(N / N) = \log(1) = 0$. Words that appear in every document (like common stop words) carry zero discriminatory power.
+  - **A)** Largest unspent budget
+  - **B)** Smallest original budget
+  - **C)** Most queries already assigned
+  - **D)** Lowest click-through rate
+- **Correct Answer:** A. Largest unspent budget
+- **Explanation:** BALANCE assigns each query to the bidder with the most remaining budget.
 
 ---
 
 ### Question 40 (1 point)
-**Which of the following is generally NOT an advantage of MapReduce / Hadoop?**
+
+**Which is generally NOT an advantage of MapReduce relative to OLAP systems?**
+
 - **Options:**
-  - A) Automatic fault tolerance via task re-execution and data replication
-  - B) Linear horizontal scalability by adding commodity machines
-  - C) Ultra-low latency query processing for interactive, real-time applications
-  - D) Moving computation to where data is stored (data locality)
-- **Answer:** C) Ultra-low latency query processing for interactive, real-time applications
-- **Explanation:** Classical MapReduce is a batch processing system with high startup overhead, disk checkpoints, and shuffle phases. It is designed for high-throughput batch workloads, not sub-second interactive or real-time queries.
+  - **A)** Very fast interactive access to simple aggregate statistics
+  - **B)** Scalability across commodity machines
+  - **C)** Support for a broad class of batch computations
+  - **D)** Framework-level handling of machine failures
+- **Correct Answer:** A. Very fast interactive access to simple aggregate statistics
+- **Explanation:** MapReduce is batch-oriented and slow for interactive queries; that is OLAP's strength.
+
+---
