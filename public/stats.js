@@ -1,5 +1,5 @@
 // Estadísticas: "Mi progreso" (nota, acierto, actividad diaria y desglose por tema) y "Comparar" (frente a la media de la clase o a otro usuario).
-// Usa las funciones globales de main.js (state, call, esc, calcUserMetrics, startStudy…) y Chart.js.
+// Usa las funciones globales de main.js (state, call, mount, calcUserMetrics, startStudy…), ui.js y Chart.js.
 
 const statsState = {
   view: 'progress', // 'progress' | 'compare'
@@ -10,44 +10,35 @@ const statsState = {
   charts: [],
 };
 
-const dayKey = (t) => {
-  const d = new Date(t);
+const dayKey = (ts) => {
+  const d = new Date(ts);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
-const dayLabel = (k) => `${k.slice(8)}/${k.slice(5, 7)}`;
+const dayLabel = (k) => (currentLang === 'en' ? `${k.slice(5, 7)}/${k.slice(8)}` : `${k.slice(8)}/${k.slice(5, 7)}`);
 const round1 = (x) => (x === null ? null : Math.round(x * 10) / 10);
 const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
 
 async function showStats({ view = 'progress', subjectId = state.subject.id, peerId = null } = {}) {
   stopTimer();
   if (!state.user) return showUsers();
+  state.view = 'stats';
   statsState.view = peerId ? 'compare' : view;
   statsState.subjectId = subjectId;
   if (peerId) statsState.peerId = peerId;
 
-  const tFn = window.t || ((k) => k);
-  $app.innerHTML = `
-    <div class="header row spread" style="flex-wrap:wrap;gap:10px">
-      <h1>📊 ${tFn('stats_title')}</h1>
-      <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
-        ${window.renderTopControls ? window.renderTopControls() : ''}
-        <button class="link" id="stats-back">${tFn('back')}</button>
-      </div>
-    </div>
-    <div class="card" style="text-align:center;padding:40px"><p class="muted">${tFn('loading')}</p></div>`;
-  $app.querySelector('#stats-back').onclick = () => showDashboard();
+  mount(`${pageHead(t('stats_title'))}<div class="card empty"><p>${t('loading')}</p></div>`, { nav: 'stats', width: 'mid' });
 
   let users;
   try {
     users = await call('GET', '/api/ranking');
     state.cachedRanking = users;
   } catch (e) {
-    toast('Error al cargar los datos de la clase: ' + e.message);
+    toast(t('class_load_error', { msg: e.message }));
     users = state.cachedRanking || [];
   }
   // El usuario actual va con sus datos en memoria, que pueden ser más recientes que los del servidor.
   statsState.users = [state.user, ...users.filter((u) => u.id !== state.user.id)];
-  renderStats();
+  if (state.view === 'stats') renderStats();
 }
 
 function statsSubject() {
@@ -82,12 +73,12 @@ function statsRows(user, subj, m) {
       return { name: s.name, score: sm.expectedScore, coverage: sm.coverage, subjectId: s.id };
     });
   }
-  return m.topicsBreakdown.map((t) => ({
-    name: t.name,
-    score: t.score,
-    coverage: t.total ? Math.round((t.studied / t.total) * 100) : 0,
+  return m.topicsBreakdown.map((tp) => ({
+    name: tp.name,
+    score: tp.score,
+    coverage: tp.total ? Math.round((tp.studied / tp.total) * 100) : 0,
     subjectId: subj.id,
-    topicId: t.id,
+    topicId: tp.id,
   }));
 }
 
@@ -112,9 +103,8 @@ function statsProfile(user, subj) {
 function statsClassProfile(profiles) {
   const avg = (f) => mean(profiles.map(f));
   const accs = profiles.map((p) => p.accuracy).filter((a) => a !== null);
-  const tFn = window.t || ((k) => k);
   return {
-    name: tFn('class_average'),
+    name: t('class_average'),
     score: round1(avg((p) => p.score)),
     accuracy: accs.length ? Math.round(mean(accs)) : null,
     coverage: Math.round(avg((p) => p.coverage)),
@@ -147,37 +137,30 @@ function statsDays(range, logs) {
 }
 
 function renderStats() {
-  statsDestroyCharts();
+  state.view = 'stats';
   const subj = statsSubject();
   const profiles = statsState.users.map((u) => statsProfile(u, subj));
   const me = profiles[0];
   const { view } = statsState;
 
-  const tFn = window.t || ((k) => k);
-  $app.innerHTML = `
-    <div class="header row spread" style="flex-wrap:wrap;gap:10px">
-      <div><h1>📊 ${tFn('stats_title')}</h1><div class="muted small">${esc(state.user.name)}</div></div>
-      <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
-        ${window.renderTopControls ? window.renderTopControls() : ''}
-        <button class="link" id="stats-back">${tFn('back')}</button>
-      </div>
+  const toolbar = `<div class="stats-toolbar">
+    <div class="seg lg">
+      <button data-stats-view="progress" class="${view === 'progress' ? 'active' : ''}">${icon('chart')}${t('stats_progress_tab')}</button>
+      <button data-stats-view="compare" class="${view === 'compare' ? 'active' : ''}">${icon('users')}${t('stats_compare_tab')}</button>
     </div>
-    <div class="stats-toggles">
-      <div class="seg">
-        <button data-stats-view="progress" class="${view === 'progress' ? 'active' : ''}">${tFn('stats_progress_tab')}</button>
-        <button data-stats-view="compare" class="${view === 'compare' ? 'active' : ''}">${tFn('stats_compare_tab')}</button>
-      </div>
-      <div class="tabs">
-        <button data-stats-subject="all" class="${subj === 'all' ? 'active' : ''}">${tFn('all')}</button>
-        ${SUBJECTS.map((s) => `<button data-stats-subject="${s.id}" class="${s === subj ? 'active' : ''}">${esc(s.name)}</button>`).join('')}
-      </div>
+    <div class="seg">
+      <button data-stats-subject="all" class="${subj === 'all' ? 'active' : ''}">${t('all_subjects')}</button>
+      ${SUBJECTS.map((s) => `<button data-stats-subject="${s.id}" class="${s === subj ? 'active' : ''}">${esc(s.name)}</button>`).join('')}
     </div>
-    ${view === 'progress' ? statsProgressHtml(me, profiles, subj) : statsCompareHtml(me, profiles, subj)}`;
+  </div>`;
 
-  $app.querySelector('#stats-back').onclick = () => {
-    statsDestroyCharts();
-    showDashboard();
-  };
+  mount(
+    `${pageHead(t('stats_title'), t('stats_sub', { name: esc(state.user.name) }))}
+    ${toolbar}
+    ${view === 'progress' ? statsProgressHtml(me, profiles, subj) : statsCompareHtml(me, profiles, subj)}`,
+    { nav: 'stats', width: 'mid' }
+  );
+
   $app.querySelectorAll('[data-stats-view]').forEach((b) => {
     b.onclick = () => {
       statsState.view = b.dataset.statsView;
@@ -205,7 +188,6 @@ function renderStats() {
   }
   $app.querySelectorAll('[data-study-topic]').forEach((b) => {
     b.onclick = () => {
-      statsDestroyCharts();
       state.subject = subj;
       localStorage.setItem('lewis-quiz-subject', subj.id);
       startStudy(Number(b.dataset.studyTopic));
@@ -213,54 +195,78 @@ function renderStats() {
   });
 
   if (view === 'progress') statsActivityChart(me, subj);
-  else statsCumulativeChart(me, statsPeer(profiles), profiles, subj);
+  else statsCompareChart(me, statsPeer(profiles), profiles, subj);
 }
 
 // ---------------- Mi progreso ----------------
 
 function statsProgressHtml(me, profiles, subj) {
   const rank = 1 + profiles.filter((p) => p.score > me.score).length;
-  const ranges = [['7d', '7 días'], ['30d', '30 días'], ['all', 'Todo']];
+  const ranges = [
+    ['7d', t('range_7d')],
+    ['30d', t('range_30d')],
+    ['all', t('range_all')],
+  ];
   const hasActivity = statsLogs(me.user, subj).length > 0;
 
   return `
-    <div class="kpis">
-      <div class="card stat"><b style="color:${me.grade.color}">${me.score}<small>/10</small></b><span class="muted small">nota esperada · ${rank}º de ${profiles.length}</span></div>
-      <div class="card stat"><b>${me.accuracy === null ? '–' : me.accuracy + '%'}</b><span class="muted small">acierto · ${me.reviews} resp.</span></div>
-      <div class="card stat"><b>${me.coverage}%</b><span class="muted small">visto · ${me.studied}/${me.total}</span></div>
-      <div class="card stat"><b>${me.streak}</b><span class="muted small">${me.streak === 1 ? 'día seguido' : 'días seguidos'}</span></div>
+    <div class="kpi-grid">
+      <div class="card kpi">
+        <div class="kpi-label">${icon('target')}${t('kpi_expected')}</div>
+        <div class="kpi-value" style="color:${me.grade.color}">${fmt1(me.score)}<span class="kpi-unit">/10</span></div>
+        <div class="kpi-sub">${t('rank_of', { rank, total: profiles.length })}</div>
+      </div>
+      <div class="card kpi">
+        <div class="kpi-label">${icon('checkCircle')}${t('accuracy')}</div>
+        <div class="kpi-value">${me.accuracy === null ? '–' : `${me.accuracy}<span class="kpi-unit">%</span>`}</div>
+        <div class="kpi-sub">${t('n_answers', { n: me.reviews })}</div>
+      </div>
+      <div class="card kpi">
+        <div class="kpi-label">${icon('book')}${t('coverage')}</div>
+        <div class="kpi-value">${me.coverage}<span class="kpi-unit">%</span></div>
+        <div class="kpi-sub">${t('kpi_coverage_sub', { seen: me.studied, total: me.total })}</div>
+      </div>
+      <div class="card kpi">
+        <div class="kpi-label">${icon('flame')}${t('streak')}</div>
+        <div class="kpi-value">${me.streak}</div>
+        <div class="kpi-sub">${me.streak === 1 ? t('day_in_row') : t('days_in_row')}</div>
+      </div>
     </div>
 
-    <div class="card stats-card">
-      <div class="row spread stats-card-head">
-        <b>Actividad</b>
-        <div class="seg small">
-          ${ranges.map(([k, label]) => `<button data-stats-range="${k}" class="${statsState.range === k ? 'active' : ''}">${label}</button>`).join('')}
+    <section class="section">
+      <div class="card">
+        <div class="card-head">
+          <div><h3>${t('activity_title')}</h3><p class="card-sub">${t('activity_sub')}</p></div>
+          <div class="seg compact">
+            ${ranges.map(([k, label]) => `<button data-stats-range="${k}" class="${statsState.range === k ? 'active' : ''}">${label}</button>`).join('')}
+          </div>
+        </div>
+        ${hasActivity ? '<div class="stats-chart"><canvas id="stats-chart"></canvas></div>' : `<p class="empty-inline">${t('no_activity_subject')}</p>`}
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="card">
+        <div class="card-head"><h3>${subj === 'all' ? t('by_subject') : t('by_topic')}</h3></div>
+        <div>
+          ${me.rows
+            .map(
+              (r) => `
+            <div class="stats-row">
+              <div class="name" title="${esc(r.name)}">${esc(r.name)} <span class="muted small">· ${t('pct_seen', { n: r.coverage })}</span></div>
+              <div class="meter"><span style="width:${r.score * 10}%;background:${getGradeInfo(r.score).color}"></span></div>
+              <span class="val">${fmt1(r.score)}</span>
+              ${
+                r.topicId
+                  ? `<button class="btn btn-secondary btn-sm" data-study-topic="${r.topicId}">${icon('play')}${t('study')}</button>`
+                  : `<button class="btn btn-ghost btn-sm" data-stats-subject="${r.subjectId}">${t('view')}${icon('chevronRight')}</button>`
+              }
+            </div>`
+            )
+            .join('')}
         </div>
       </div>
-      ${hasActivity ? '<div class="stats-chart"><canvas id="stats-chart"></canvas></div>' : '<p class="muted small">Aún no has respondido preguntas de esta asignatura.</p>'}
-    </div>
-
-    <div class="card stats-card">
-      <div class="stats-card-head"><b>${subj === 'all' ? 'Por asignatura' : 'Por tema'}</b></div>
-      <div class="stack">
-        ${me.rows
-          .map(
-            (r) => `
-          <div class="stats-row">
-            <div class="name" title="${esc(r.name)}">${esc(r.name)} <span class="muted small">· ${r.coverage}% visto</span></div>
-            <div class="bar"><span style="width:${r.score * 10}%;background:${getGradeInfo(r.score).color}"></span></div>
-            <span class="val">${r.score}</span>
-            ${
-              r.topicId
-                ? `<button class="link small" data-study-topic="${r.topicId}">Estudiar</button>`
-                : `<button class="link small" data-stats-subject="${r.subjectId}">Ver</button>`
-            }
-          </div>`
-          )
-          .join('')}
-      </div>
-    </div>`;
+    </section>`;
 }
 
 // Barras de aciertos/fallos por día y línea de acierto acumulado (contando también lo anterior al periodo).
@@ -295,14 +301,14 @@ function statsActivityChart(me, subj) {
       data: {
         labels: days.map(dayLabel),
         datasets: [
-          { type: 'line', label: 'Acierto acumulado', data: accLine, yAxisID: 'acc', borderColor: c.accent, backgroundColor: c.accent, borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: true },
-          { type: 'bar', label: 'Aciertos', data: days.map((k) => byDay[k]?.ok || 0), backgroundColor: c.ok, stack: 'r', borderRadius: 3, maxBarThickness: 28 },
-          { type: 'bar', label: 'Fallos', data: days.map((k) => byDay[k]?.bad || 0), backgroundColor: c.bad, stack: 'r', borderRadius: 3, maxBarThickness: 28 },
+          { type: 'line', label: t('chart_cum_accuracy'), data: accLine, yAxisID: 'acc', borderColor: c.accent, backgroundColor: c.accent, borderWidth: 2, pointRadius: 0, tension: 0.3, spanGaps: true },
+          { type: 'bar', label: t('chart_correct'), data: days.map((k) => byDay[k]?.ok || 0), backgroundColor: c.ok, stack: 'r', borderRadius: 4, maxBarThickness: 26 },
+          { type: 'bar', label: t('chart_wrong'), data: days.map((k) => byDay[k]?.bad || 0), backgroundColor: c.bad, stack: 'r', borderRadius: 4, maxBarThickness: 26 },
         ],
       },
       options: statsChartOptions({
         x: { stacked: true, grid: { display: false } },
-        y: { stacked: true, beginAtZero: true, ticks: { precision: 0 }, title: { display: true, text: 'respuestas' } },
+        y: { stacked: true, beginAtZero: true, ticks: { precision: 0 }, title: { display: true, text: t('chart_answers_axis') } },
         acc: { position: 'right', min: 0, max: 100, grid: { display: false }, ticks: { callback: (v) => v + '%' } },
       }),
     })
@@ -319,70 +325,75 @@ function statsPeer(profiles) {
 function statsCompareHtml(me, profiles, subj) {
   const peer = statsPeer(profiles);
   const isClass = !peer.user;
-  const fmt = (v, unit = '') => (v === null ? '–' : v + unit);
+  const peerName = isClass ? t('average') : peer.name;
+  const fmt = (v, unit = '') => (v === null ? '–' : fmt1(v) + unit);
   const diff = (a, b, unit = '') => {
     if (a === null || b === null) return '<td class="muted">–</td>';
     const d = round1(a - b);
-    return `<td class="${d > 0 ? 'ok' : d < 0 ? 'bad' : 'muted'}">${d > 0 ? '+' : ''}${d}${unit}</td>`;
+    return `<td class="${d > 0 ? 'ok' : d < 0 ? 'bad' : 'muted'}">${d > 0 ? '+' : ''}${fmt1(d)}${unit}</td>`;
   };
   const metrics = [
-    ['Nota esperada', 'score', ''],
-    ['Acierto', 'accuracy', '%'],
-    ['Temario visto', 'coverage', '%'],
-    ['Dominadas (≥21 días)', 'mature', ''],
-    ['Respuestas', 'reviews', ''],
-    ['Días seguidos', 'streak', ''],
+    [t('kpi_expected'), 'score', ''],
+    [t('accuracy'), 'accuracy', '%'],
+    [t('coverage'), 'coverage', '%'],
+    [t('mastered_long'), 'mature', ''],
+    [t('answers_cap'), 'reviews', ''],
+    [t('streak'), 'streak', ''],
   ];
 
   return `
-    <div class="card stats-card">
-      <div class="row spread stats-card-head">
-        <b style="white-space:nowrap">Comparar con</b>
-        <select id="stats-peer">
-          <option value="class" ${isClass ? 'selected' : ''}>👥 Media de la clase (${profiles.length})</option>
+    <div class="card">
+      <div class="card-head">
+        <h3>${t('compare_with_label')}</h3>
+        <select id="stats-peer" class="input input-sm" style="max-width:260px">
+          <option value="class" ${isClass ? 'selected' : ''}>${t('class_average')} (${profiles.length})</option>
           ${profiles
             .slice(1)
             .map((p) => `<option value="${esc(p.user.id)}" ${peer === p ? 'selected' : ''}>${esc(p.name)}</option>`)
             .join('')}
         </select>
       </div>
-      <table class="stats-table">
-        <thead><tr><th></th><th>Tú</th><th>${esc(isClass ? 'Media' : peer.name)}</th><th>Dif.</th></tr></thead>
+      <table class="table">
+        <thead><tr><th></th><th>${t('you')}</th><th>${esc(peerName)}</th><th>${t('diff')}</th></tr></thead>
         <tbody>
           ${metrics.map(([label, k, unit]) => `<tr><td>${label}</td><td><b>${fmt(me[k], unit)}</b></td><td>${fmt(peer[k], unit)}</td>${diff(me[k], peer[k], unit)}</tr>`).join('')}
         </tbody>
       </table>
     </div>
 
-    <div class="card stats-card">
-      <div class="row spread stats-card-head">
-        <b>${subj === 'all' ? 'Nota por asignatura' : 'Nota por tema'}</b>
-        <span class="small muted"><span class="dot" style="background:var(--accent)"></span>Tú <span class="dot" style="background:var(--peer);margin-left:8px"></span>${esc(isClass ? 'Media' : peer.name)}</span>
+    <section class="section">
+      <div class="card">
+        <div class="card-head">
+          <h3>${subj === 'all' ? t('score_by_subject') : t('score_by_topic')}</h3>
+          <span class="legend"><span><span class="dot" style="background:var(--accent)"></span>${t('you')}</span><span><span class="dot" style="background:var(--peer)"></span>${esc(peerName)}</span></span>
+        </div>
+        <div>
+          ${me.rows
+            .map((r, i) => {
+              const p = peer.rows[i];
+              return `
+            <div class="stats-row compare">
+              <div class="name" title="${esc(r.name)}">${esc(r.name)}</div>
+              <div class="pair">
+                <div class="meter"><span style="width:${r.score * 10}%;background:var(--accent)"></span></div><span class="val">${fmt1(r.score)}</span>
+                <div class="meter"><span style="width:${p.score * 10}%;background:var(--peer)"></span></div><span class="val">${fmt1(p.score)}</span>
+              </div>
+            </div>`;
+            })
+            .join('')}
+        </div>
       </div>
-      <div class="stack">
-        ${me.rows
-          .map((r, i) => {
-            const p = peer.rows[i];
-            return `
-          <div class="stats-row compare">
-            <div class="name" title="${esc(r.name)}">${esc(r.name)}</div>
-            <div class="pair">
-              <div class="bar"><span style="width:${r.score * 10}%;background:var(--accent)"></span></div><span class="val">${r.score}</span>
-              <div class="bar"><span style="width:${p.score * 10}%;background:var(--peer)"></span></div><span class="val">${p.score}</span>
-            </div>
-          </div>`;
-          })
-          .join('')}
-      </div>
-    </div>
+    </section>
 
-    <div class="card stats-card">
-      <div class="stats-card-head"><b>Preguntas respondidas (acumulado)</b></div>
-      <div class="stats-chart"><canvas id="stats-chart"></canvas></div>
-    </div>`;
+    <section class="section">
+      <div class="card">
+        <div class="card-head"><h3>${t('cumulative_title')}</h3></div>
+        <div class="stats-chart"><canvas id="stats-chart"></canvas></div>
+      </div>
+    </section>`;
 }
 
-function statsCumulativeChart(me, peer, profiles, subj) {
+function statsCompareChart(me, peer, profiles, subj) {
   const canvas = $app.querySelector('#stats-chart');
   if (!canvas || typeof Chart === 'undefined') return;
   const peerUsers = peer.user ? [peer.user] : profiles.map((p) => p.user);
@@ -404,8 +415,8 @@ function statsCumulativeChart(me, peer, profiles, subj) {
       data: {
         labels: days.map(dayLabel),
         datasets: [
-          { label: 'Tú', data: cumulative(me.user), borderColor: c.accent, backgroundColor: c.accent, borderWidth: 2, pointRadius: 0, tension: 0.25 },
-          { label: peer.user ? peer.name : 'Media de la clase', data: peerLine, borderColor: c.peer, backgroundColor: c.peer, borderWidth: 2, borderDash: [5, 4], pointRadius: 0, tension: 0.25 },
+          { label: t('you'), data: cumulative(me.user), borderColor: c.accent, backgroundColor: c.accent, borderWidth: 2, pointRadius: 0, tension: 0.3 },
+          { label: peer.user ? peer.name : t('class_average'), data: peerLine, borderColor: c.peer, backgroundColor: c.peer, borderWidth: 2, borderDash: [5, 4], pointRadius: 0, tension: 0.3 },
         ],
       },
       options: statsChartOptions({
@@ -428,12 +439,16 @@ function statsChartOptions(scales) {
   const c = statsColors();
   Chart.defaults.color = c.muted;
   Chart.defaults.borderColor = c.line;
-  Chart.defaults.font.family = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+  Chart.defaults.font.family = "'Inter', ui-sans-serif, system-ui, sans-serif";
+  Chart.defaults.font.size = 11;
   return {
     responsive: true,
     maintainAspectRatio: false,
     interaction: { mode: 'index', intersect: false },
-    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, boxHeight: 10, usePointStyle: true } } },
+    plugins: {
+      legend: { position: 'bottom', labels: { boxWidth: 8, boxHeight: 8, usePointStyle: true, padding: 16 } },
+      tooltip: { padding: 10, cornerRadius: 8, boxPadding: 4 },
+    },
     scales,
   };
 }
@@ -444,3 +459,4 @@ function statsDestroyCharts() {
 }
 
 window.renderStats = renderStats;
+window.statsDestroyCharts = statsDestroyCharts;

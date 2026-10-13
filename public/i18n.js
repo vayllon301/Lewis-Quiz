@@ -1,75 +1,87 @@
-// Sistema de Internacionalización (i18n) y Selector de Tema (Claro / Oscuro / Auto)
-// Lewis Quiz
+// Internacionalización (ES / EN) y selector de tema (claro / oscuro / auto).
+// t(key, params) sustituye {param} en el texto; si falta la clave en inglés, usa la española.
 
 const I18N = {
   es: {
-    // Top & common
-    app_title: 'Lewis Quiz',
+    // Común
     loading: 'Cargando…',
-    back: '← Volver',
-    back_to_panel: '← Volver al panel',
-    back_to_study: '← Volver al estudio',
+    back: 'Volver',
+    back_to_panel: 'Volver al panel',
+    close: 'Cerrar',
+    cancel: 'Cancelar',
+    confirm: 'Confirmar',
+    exit: 'Salir',
+    connection_error: 'Error de conexión',
+    save_failed: 'No se pudo guardar: {msg}',
+    nav_dashboard: 'Panel',
     nav_stats: 'Estadísticas',
     nav_ranking: 'Ranking',
-    nav_switch: 'Cambiar',
-    save: 'Guardar',
-    cancel: 'Cancelar',
-    delete: 'Borrar',
-    reset_progress: 'Reiniciar mi progreso',
+    nav_sign_in: 'Entrar',
+    nav_switch: 'Cambiar de usuario',
+    reset_progress: 'Reiniciar progreso',
     delete_user: 'Borrar usuario',
     study: 'Estudiar',
     study_now: 'Estudiar ahora',
-    force: '⚡ Forzar',
-    force_session: '⚡ Forzar sesión',
-    test: '📝 Test',
-    exam: '📝 Examen',
+    force: 'Forzar',
+    force_session: 'Forzar sesión',
+    test: 'Test',
+    exam: 'Examen',
+    view: 'Ver',
     questions: 'preguntas',
     question: 'Pregunta',
-    answers: 'respuestas',
-    overall_accuracy: 'acierto global',
-    historic_accuracy: 'acierto histórico',
-    today: 'hoy',
     coverage: 'Cobertura',
     accuracy: 'Acierto',
-    details: 'Detalle',
-    hide: 'Ocultar',
+    accuracy_lc: 'acierto',
+    acc_pct: '{n}% de acierto',
+    seen: 'Visto',
+    pct_seen: '{n}% visto',
+    seen_of: '{seen}/{total} vistas',
     compare: 'Comparar',
-    all: 'Todas',
+    compare_with: 'Comparar tus estadísticas con {name}',
+    you: 'Tú',
+    average: 'Media',
+    diff: 'Dif.',
+    all_topics: 'Todos los temas',
+    all_subjects: 'Todas',
     new_label: 'nuevas',
     learning_label: 'aprendiendo',
     review_label: 'para repasar',
-    practice_label: 'práctica',
+    practice_label: 'Práctica',
     never_seen: 'Nunca vistas',
     in_learning: 'En aprendizaje que tocan ya',
     due_reviews: 'Repasos que tocan hoy',
     bar_legend: 'Verde oscuro: dominadas (≥21 d) · verde: en repaso · rojo: aprendiendo · gris: nuevas',
+    status_new: 'Nueva',
+    status_learning: 'Aprendiendo',
+    status_review: 'Repaso',
+    ago_now: 'ahora',
+    ago: 'hace {v}',
+    unit_month: 'mes',
+    unit_year: 'a',
+    no_questions_scope: 'No hay preguntas disponibles en este ámbito.',
 
-    // Themes & Languages
-    theme_light: '☀️ Claro',
-    theme_dark: '🌙 Oscuro',
-    theme_auto: '💻 Auto',
+    // Tema e idioma
     theme_light_title: 'Modo claro',
     theme_dark_title: 'Modo oscuro',
     theme_auto_title: 'Automático (según el sistema)',
-    lang_es: '🇪🇸 ES',
-    lang_en: '🇺🇸 EN',
+    lang_label: 'Idioma',
+    theme_label: 'Tema',
 
-    // User selection screen
+    // Usuarios
     choose_user_title: '¿Quién eres?',
-    choose_user_subtitle: 'Elige tu nombre para empezar o crea uno nuevo:',
+    choose_user_subtitle: 'Elige tu perfil para continuar o crea uno nuevo.',
+    no_users_yet: 'Todavía no hay alumnos. Crea el primero abajo.',
     new_student: 'Nuevo alumno',
     your_name: 'Tu nombre',
     start_btn: 'Empezar',
 
-    // Grades
+    // Notas
     grade_sobresaliente: 'Sobresaliente',
     grade_notable: 'Notable',
     grade_aprobado: 'Aprobado',
     grade_suspenso: 'Suspenso',
 
-    // Subjects & Topics
-    sp_name: 'Statistical Programming',
-    dm_name: 'Data Mining',
+    // Asignaturas y temas
     sp_t1: 'Tema 1 · Introducción a la programación y Python',
     sp_t2: 'Tema 2 · Fundamentos del lenguaje Python',
     sp_t3: 'Tema 3 · NumPy',
@@ -85,206 +97,304 @@ const I18N = {
     dm_t6: 'Tema 6 · Sistemas de recomendación',
     dm_t7: 'Tema 7 · Publicidad online y algoritmo BALANCE',
     final_mock_name: 'Final Mock Exam',
-    final_mock_title: 'DATA 51000 Practice Final Exam',
     final_mock_desc: 'Examen oficial de práctica de 40 preguntas · 1 punto cada una',
 
-    // Dashboard
-    expected_grade_banner: 'Nota esperada en el examen:',
-    expected_grade_sub: 'Cobertura: {cov}% ({seen}/{total} preguntas) · Acierto: {acc}%',
-    view_ranking_btn: 'Ver Ranking →',
-    test_sim_title: '📝 Simulador de Test con Nota Final',
-    test_sim_desc: 'Ponte a prueba con un test de <b>todas las {total} preguntas</b> o elige cuántas quieres. Al finalizar obtendrás tu nota oficial sobre 10 y revisión detallada.',
-    btn_final_mock: '🎓 Final Mock Exam (40)',
-    btn_test_all: '🚀 Test de todas ({total})',
-    btn_custom_test: '⚙️ Elegir cuántas preguntas...',
-    global_title: 'Global',
-    global_desc: '{total} preguntas de todos los temas de {subject} mezcladas',
-    exams_section_title: 'Exámenes Oficiales y Simulacros',
-    topics_section_title: 'Por temas',
+    // Panel
+    dashboard_greeting: 'Hola, {name}',
+    dashboard_sub: 'Este es tu progreso. Sigue con tus repasos o ponte a prueba con un test.',
+    kpi_expected: 'Nota esperada',
+    kpi_due: 'Para repasar ahora',
+    kpi_due_sub: '+ {n} nuevas sin ver',
+    kpi_coverage_sub: '{seen} de {total} preguntas vistas',
+    kpi_acc_sub: '{n} respuestas · {today} hoy',
+    view_ranking_btn: 'Ver ranking',
+    study_card_title: 'Sesión de estudio',
+    study_card_sub: 'Repaso espaciado de todos los temas de {subject}',
+    cards_due_now: 'tarjetas pendientes ahora',
+    test_sim_title: 'Simulador de examen',
+    test_sim_desc: 'Haz un test con las {total} preguntas o elige cuántas. Obtendrás tu nota sobre 10 y la corrección detallada.',
+    btn_final_mock: 'Final Mock Exam ({n})',
+    btn_test_all: 'Test completo ({total})',
+    btn_custom_test: 'Test personalizado…',
+    exams_section_title: 'Exámenes oficiales y simulacros',
+    topics_section_title: 'Temas',
+    n_topics: '{n} temas',
     history_section_title: 'Historial',
     most_missed_title: 'Las que más fallas',
     recent_answers_title: 'Últimas respuestas',
     no_answers_yet: 'Todavía no has respondido ninguna pregunta.',
-    faq_summary: '¿Cómo funciona el repaso espaciado y el modo test?',
-    faq_p1: '<b>Modo Estudio (SRS SM-2):</b> Cada pregunta es una tarjeta programada según tu memoria. Al acertar, su intervalo crece en días. Si fallas, vuelve a corto plazo.',
-    faq_p2: '<b>Modo Test / Examen:</b> Te permite examinarte con una tanda de preguntas (o el 100% del temario). Al terminar te calcula tu <b>nota sobre 10</b>, te asigna calificación académica (Suspenso, Aprobado, Notable, Sobresaliente) y te muestra un desglose de fallos y explicaciones.',
+    no_misses_yet: 'Aún no has fallado ninguna pregunta. ¡Sigue así!',
+    faq_summary: '¿Cómo funcionan el repaso espaciado y el modo test?',
+    faq_p1: '<b>Modo estudio (SRS SM-2):</b> cada pregunta es una tarjeta programada según tu memoria. Al acertar, su intervalo crece en días; si fallas, vuelve a corto plazo.',
+    faq_p2: '<b>Modo test / examen:</b> te examinas con una tanda de preguntas (o todo el temario). Al terminar obtienes tu <b>nota sobre 10</b>, la calificación (Suspenso, Aprobado, Notable, Sobresaliente) y el desglose de fallos con explicaciones.',
+    confirm_reset_title: '¿Reiniciar el progreso?',
+    confirm_reset_body: 'Se borrará todo el progreso y el historial de <b>{name}</b>. Esta acción no se puede deshacer.',
+    confirm_delete_title: '¿Borrar el usuario?',
+    confirm_delete_body: 'Se borrará el usuario <b>{name}</b> y todo su historial. Esta acción no se puede deshacer.',
+    reset_done: 'Progreso reiniciado.',
 
-    // Ratings (Anki SM-2)
+    // Valoraciones (Anki SM-2)
     rating_again: 'Otra vez',
     rating_hard: 'Difícil',
     rating_good: 'Bien',
     rating_easy: 'Fácil',
-    check_btn: 'Comprobar',
+    check_btn: 'Comprobar respuesta',
     next_btn: 'Siguiente',
-    select_all_prompt: 'Selecciona todas las opciones correctas y pulsa <b>Comprobar respuesta</b>.',
+    multi_hint: 'Selecciona todas las opciones correctas y pulsa «Comprobar respuesta».',
+    correct_msg: '¡Correcto!',
+    incorrect_msg: 'Incorrecto',
+    was_single: 'La respuesta correcta era:',
+    were_multi: 'Las respuestas correctas eran:',
+    key_space: 'Espacio',
+    kbd_single: 'Responde con {keys} o {letters}',
+    kbd_multi: 'Marca con {keys} · {enter} para comprobar',
+    kbd_rate: 'Califica con {keys} · {space} = Bien',
+    kbd_continue: '{space} o {enter} para continuar',
 
-    // Study View
+    // Estudio
     study_done_title: '¡Al día con {scope}!',
     study_done_sub: 'No te toca ninguna tarjeta ahora.',
     next_due_in: 'La próxima vuelve en <b>{wait}</b>.',
-    btn_force_study: '⚡ Forzar sesión de estudio',
+    btn_force_study: 'Forzar sesión de estudio',
     btn_practice_random: 'Practicar al azar',
-    force_study_tip: '<b>⚡ Forzar sesión:</b> adelanta tarjetas que vencerán próximamente o repasa tus puntos débiles recalculando y consolidando tus intervalos de memoria.',
+    force_study_tip: 'Forzar sesión adelanta tarjetas que vencerán pronto o repasa tus puntos débiles.',
     practice_banner: 'Modo práctica: tus respuestas cuentan en el historial, pero no cambian cuándo vuelve cada tarjeta.',
+    forced_banner_resched: 'Sesión forzada con reprogramación SRS: tus calificaciones recalculan los intervalos a partir de hoy.',
+    forced_banner_no_resched: 'Sesión forzada de repaso: tus respuestas cuentan en el historial, pero no cambian las fechas de repaso.',
 
-    // Force Study Modal
-    force_modal_title: 'Forzar Sesión de Estudio',
-    force_modal_sub: '{scope} · <b>{total}</b> preguntas disponibles',
-    force_modal_desc: 'Estudia tarjetas sin esperar a que venzan. Puedes reprogramar tus intervalos SRS con Anki SM-2 para acelerar tu retención o hacer un repaso intensivo de tus puntos débiles.',
-    how_many_cards: '¿CUÁNTAS TARJETAS QUIERES ESTUDIAR?',
+    // Modal de sesión forzada
+    force_modal_title: 'Forzar sesión de estudio',
+    force_modal_sub: '{scope} · {total} preguntas',
+    force_modal_desc: 'Estudia tarjetas sin esperar a que venzan: adelanta repasos o haz un repaso intensivo de tus puntos débiles.',
+    how_many_cards: '¿Cuántas tarjetas?',
     cards_unit: 'tarjetas',
-    all_cards_chip: '⭐ Todas ({total})',
+    all_cards_chip: 'Todas ({total})',
     exact_number: 'Número exacto:',
     of_total: 'de {total}',
-    priority_criteria: 'CRITERIO DE PRIORIDAD Y SELECCIÓN',
-    strat_due_title: '🕒 Próximas a vencer primero',
-    strat_due_desc: 'Adelanta los repasos cuya fecha de vencimiento está más próxima en el tiempo.',
-    strat_hard_title: '🧠 Mayor dificultad y más falladas',
-    strat_hard_desc: 'Prioriza tarjetas con menor facilidad (ease) o con más fallos históricos.',
-    strat_random_title: '🎲 Aleatorio / Temario completo',
-    strat_random_desc: 'Mezcla libremente preguntas de todo el temario seleccionado.',
-    reschedule_cb_title: 'Reprogramar con algoritmo SRS (SM-2):',
-    reschedule_cb_desc: 'Al calificar con los 4 botones de Anki (Otra vez, Difícil, Bien, Fácil), el nuevo intervalo se recalcula a partir de hoy, adelantando tu curva de retención real.',
-    btn_start_force: '⚡ Comenzar Sesión Forzada',
-    tag_forced_session: '⚡ Sesión Forzada',
-    tag_forced_completed: '⚡ Sesión Forzada Completada',
-    force_completed_title: '¡Sesión de estudio forzada completada!',
-    force_completed_desc: 'Has repasado con éxito <b>{total} tarjetas</b> en <b>{scope}</b>.',
-    intervals_expanded: 'intervalos ampliados',
-    srs_active_label: 'SRS Activo',
-    srs_active_sub: 'Tarjetas reprogramadas',
-    srs_review_label: 'Repaso',
-    srs_review_sub: 'Sin alterar fechas',
-    btn_another_force: '⚡ Otra tanda forzada',
+    priority_criteria: 'Criterio de selección',
+    recommended: 'Recomendado',
+    strat_due_title: 'Próximas a vencer primero',
+    strat_due_desc: 'Adelanta los repasos cuya fecha está más cerca.',
+    strat_hard_title: 'Más difíciles y más falladas',
+    strat_hard_desc: 'Prioriza tarjetas con menor facilidad o más fallos históricos.',
+    strat_random_title: 'Aleatorio',
+    strat_random_desc: 'Mezcla preguntas de todo el temario seleccionado.',
+    reschedule_cb_title: 'Reprogramar con SRS (SM-2)',
+    reschedule_cb_desc: 'Al calificar (Otra vez, Difícil, Bien, Fácil), el intervalo se recalcula desde hoy. Desmárcalo para repasar sin cambiar fechas.',
+    btn_start_force: 'Comenzar sesión',
+    tag_forced_session: 'Sesión forzada',
+    tag_forced_completed: 'Sesión forzada completada',
+    force_completed_title: '¡Sesión completada!',
+    force_completed_desc: 'Has repasado <b>{total} tarjetas</b> de <b>{scope}</b>.',
+    intervals_expanded: 'Intervalos ampliados',
+    srs_active_label: 'Modo',
+    srs_active_sub: 'Reprogramadas',
+    srs_review_label: 'Modo',
+    srs_review_sub: 'Sin cambiar fechas',
+    btn_another_force: 'Otra tanda',
+    confirm_exit_force_title: '¿Salir de la sesión forzada?',
+    confirm_exit_force_body: 'Las tarjetas que ya has calificado quedan guardadas.',
 
-    // Test Modal & Execution
-    test_modal_title: '📝 Configurar Test de Examen',
-    mock_modal_title: '🎓 Configurar Final Mock Exam',
-    mock_modal_sub: 'DATA 51000 Practice Final Exam · <b>{total}</b> preguntas disponibles (1 punto c/u)',
-    test_modal_sub: '{scope} · <b>{total}</b> preguntas disponibles',
-    how_many_questions: '¿CUÁNTAS PREGUNTAS QUIERES EN EL TEST?',
-    all_questions_chip: '⭐ Todas ({total})',
-    full_exam_chip: '⭐ Examen completo ({total})',
+    // Modal y ejecución del test
+    test_modal_title: 'Configurar test',
+    mock_modal_title: 'Final Mock Exam',
+    mock_modal_sub: 'DATA 51000 Practice Final Exam · {total} preguntas (1 punto cada una)',
+    test_modal_sub: '{scope} · {total} preguntas',
+    how_many_questions: '¿Cuántas preguntas?',
+    all_questions_chip: 'Todas ({total})',
+    full_exam_chip: 'Examen completo ({total})',
     questions_unit: 'preguntas',
-    immediate_feedback_title: 'Corrección inmediata:',
-    immediate_feedback_desc: 'ver respuesta correcta y explicación tras responder cada pregunta',
-    shuffle_title: 'Barajar preguntas:',
-    shuffle_desc: 'orden aleatorio para no memorizar posiciones',
-    btn_start_test: '🚀 Comenzar Test',
-    btn_start_exam: '🎓 Comenzar Examen',
-    exit_test_btn: '← Salir del test',
-    test_tag: '📝 Test · {topic}',
+    immediate_feedback_title: 'Corrección inmediata',
+    immediate_feedback_desc: 'Ver la respuesta correcta y la explicación tras cada pregunta.',
+    shuffle_title: 'Barajar preguntas',
+    shuffle_desc: 'Orden aleatorio para no memorizar posiciones.',
+    btn_start_test: 'Comenzar test',
+    btn_start_exam: 'Comenzar examen',
     question_counter: 'Pregunta <b>{cur}</b> de <b>{total}</b>',
-    correct_msg: '✓ ¡Respuesta correcta!',
-    incorrect_msg: '✗ Respuesta incorrecta',
-    was_single: 'Era:',
-    were_multi: 'Eran:',
-    btn_next_question: 'Siguiente pregunta →',
-    btn_finish_test: 'Finalizar test y ver nota →',
+    btn_next_question: 'Siguiente pregunta',
+    btn_finish_test: 'Finalizar y ver nota',
+    confirm_exit_test_title: '¿Salir del test?',
+    confirm_exit_test_body: 'Perderás el progreso de este test.',
 
-    // Test Summary
-    test_results_title: '🏁 Resultados del Test',
-    test_results_sub: '{scope} · {total} preguntas evaluadas',
-    test_score_label: 'Tu nota final en el test',
+    // Resultados
+    test_results_title: 'Resultados del test',
+    test_results_sub: '{scope} · {total} preguntas',
+    test_score_label: 'Tu nota',
     mock_score_label: 'Puntuación Final Mock Exam',
-    mock_points_detail: 'Puntos: <b style="color:{color}">{correct}</b> / {total} puntos (1 punto por pregunta)',
-    btn_repeat_test: '🔄 Repetir este test',
-    btn_new_test: '📝 Hacer otro test...',
-    btn_to_dashboard: '🏠 Ir al panel',
-    feedback_excellent: '¡Excelente resultado! Dominas con solvencia estas preguntas de la asignatura.',
-    feedback_great: '¡Muy buen trabajo! Tienes un nivel notable. Repasa las falladas abajo para alcanzar el 10.',
-    feedback_pass: '¡Has aprobado el test! Revisa con calma los fallos para consolidar tu conocimiento.',
-    feedback_fail: 'No has alcanzado el aprobado (5,0). Revisa las soluciones explicadas abajo y vuelve a intentarlo.',
+    mock_points_detail: '<b>{correct}</b> / {total} puntos (1 punto por pregunta)',
+    btn_repeat_test: 'Repetir test',
+    btn_new_test: 'Otro test…',
+    btn_to_dashboard: 'Ir al panel',
+    feedback_excellent: '¡Excelente resultado! Dominas estas preguntas con solvencia.',
+    feedback_great: '¡Muy buen trabajo! Repasa las falladas abajo para llegar al 10.',
+    feedback_pass: '¡Aprobado! Revisa con calma los fallos para consolidar lo aprendido.',
+    feedback_fail: 'No has llegado al 5. Revisa las explicaciones de abajo y vuelve a intentarlo.',
+    correct_label: 'Aciertos',
+    incorrect_label: 'Fallos',
+    to_review_below: 'Revísalos abajo',
+    time_label: 'Tiempo',
+    avg_per_question: '{s} s por pregunta',
+    topic_performance: 'Rendimiento por tema',
+    n_correct: '{c}/{total} aciertos',
+    answer_review_title: 'Revisión de respuestas',
+    filter_all: 'Todas ({n})',
+    filter_wrong: 'Falladas ({n})',
+    filter_correct: 'Acertadas ({n})',
+    review_correct: 'Acierto',
+    review_wrong: 'Fallo',
+    tag_correct: 'Correcta',
+    tag_yours: 'Tu respuesta',
+    no_filter_match: 'No hay preguntas que coincidan con este filtro.',
 
-    // Ranking View
-    ranking_title: 'Ranking de la Clase',
-    ranking_sub: '{scope} · predicción de nota en el examen',
-    tab_general: '🌍 General (Todas)',
-    your_rank_is: 'Tu posición: <b>#{rank}</b> de {total} alumnos',
-    sort_by_label: 'Criterio de ordenación:',
-    sort_score: 'Nota esperada (estimación de examen)',
-    sort_coverage: 'Mayor cobertura (% temario visto)',
-    sort_reviews: 'Total de repasos completados',
-    sort_accuracy: 'Porcentaje de acierto global',
+    // Ranking
+    ranking_title: 'Ranking de la clase',
+    ranking_sub: 'predicción de nota en el examen',
+    loading_ranking: 'Cargando las métricas de la clase…',
+    ranking_load_error: 'Error al cargar el ranking: {msg}',
+    your_rank_is: 'Vas <b>#{rank}</b> de {total} alumnos',
+    n_students: '{n} alumnos',
+    sort_by_label: 'Ordenar por',
+    sort_score: 'Nota esperada',
+    sort_accuracy: 'Acierto',
+    sort_coverage: 'Cobertura',
+    sort_mature: 'Tarjetas dominadas',
+    sort_reviews: 'Repasos totales',
+    mastered: 'dominadas',
+    mastered_long: 'Dominadas (≥21 días)',
+    reps: 'repasos',
+    n_today: '{n} hoy',
+    podium_meta: '{cov}% visto · {n} repasos',
+    last_review: 'Último repaso {when}',
+    no_activity: 'Sin actividad registrada',
+    answers_today: '{n} respuestas hoy',
+    diagnosis: 'Diagnóstico:',
+    topic_mastery: 'Nota y dominio por tema',
+    no_students_title: 'Aún no hay alumnos',
+    no_students_desc: 'Cuando alguien empiece a estudiar aparecerá aquí.',
+    advice_low: 'Has visto el {cov}% del temario. Desbloquea las {left} preguntas restantes para poder aspirar a aprobar.',
+    advice_mid: 'Llevas un {cov}% de cobertura. Te faltan {left} preguntas nuevas por estudiar.',
+    advice_full: '¡Has cubierto el 100% de las preguntas! Consolida las {n} tarjetas en repaso para convertir tu {score}/10 en sobresaliente.',
+    advice_mastered: '¡Gran preparación! Tienes {n} tarjetas dominadas (≥21 días) con un {acc}% de acierto. Mantén los repasos.',
+    ranking_faq_title: '¿Cómo se calcula la nota esperada?',
+    ranking_faq_intro: 'La nota esperada usa un <b>modelo probabilístico de retención</b> que evalúa cada pregunta del temario:',
+    ranking_faq_unseen: '<b>Preguntas no vistas (0 puntos):</b> no aportan nada; no se puede aprobar sin cobertura mínima.',
+    ranking_faq_mature: '<b>Tarjetas maduras (≥21 días, ~94% de retención):</b> consolidadas en la memoria a largo plazo.',
+    ranking_faq_young: '<b>Tarjetas jóvenes (1–20 días, ~72–90%):</b> en afianzamiento; la probabilidad sube con el intervalo.',
+    ranking_faq_learning: '<b>En aprendizaje / reaprendizaje (~50%):</b> pasos cortos iniciales o tras un fallo reciente.',
+    ranking_faq_factor: '<b>Factor de precisión personal:</b> se ajusta según tu tasa histórica de acierto.',
+    ranking_faq_scale: '<b>Escala:</b> Suspenso (&lt; 5,0) · Aprobado (5,0–6,9) · Notable (7,0–8,9) · Sobresaliente (9,0–10).',
 
-    // Stats View
+    // Estadísticas
     stats_title: 'Estadísticas',
-    stats_progress_tab: '📈 Mi progreso',
-    stats_compare_tab: '👥 Comparar',
-    time_7d: 'Últimos 7 días',
-    time_30d: 'Últimos 30 días',
-    time_all: 'Todo el histórico',
-    class_average: '👥 Media de la clase',
+    stats_sub: 'Progreso de {name}',
+    stats_progress_tab: 'Mi progreso',
+    stats_compare_tab: 'Comparar',
+    class_load_error: 'Error al cargar los datos de la clase: {msg}',
+    class_average: 'Media de la clase',
+    range_7d: '7 días',
+    range_30d: '30 días',
+    range_all: 'Todo',
+    rank_of: 'Puesto {rank} de {total}',
+    n_answers: '{n} respuestas',
+    streak: 'Racha',
+    day_in_row: 'día seguido',
+    days_in_row: 'días seguidos',
+    activity_title: 'Actividad',
+    activity_sub: 'Aciertos y fallos por día, con el acierto acumulado',
+    no_activity_subject: 'Aún no has respondido preguntas de esta asignatura.',
+    by_subject: 'Por asignatura',
+    by_topic: 'Por tema',
+    chart_cum_accuracy: 'Acierto acumulado',
+    chart_correct: 'Aciertos',
+    chart_wrong: 'Fallos',
+    chart_answers_axis: 'respuestas',
+    compare_with_label: 'Comparar con',
+    answers_cap: 'Respuestas',
+    score_by_subject: 'Nota por asignatura',
+    score_by_topic: 'Nota por tema',
+    cumulative_title: 'Preguntas respondidas (acumulado)',
   },
 
   en: {
-    // Top & common
-    app_title: 'Lewis Quiz',
+    // Common
     loading: 'Loading…',
-    back: '← Back',
-    back_to_panel: '← Back to dashboard',
-    back_to_study: '← Back to study',
+    back: 'Back',
+    back_to_panel: 'Back to dashboard',
+    close: 'Close',
+    cancel: 'Cancel',
+    confirm: 'Confirm',
+    exit: 'Leave',
+    connection_error: 'Connection error',
+    save_failed: 'Could not save: {msg}',
+    nav_dashboard: 'Dashboard',
     nav_stats: 'Statistics',
     nav_ranking: 'Leaderboard',
-    nav_switch: 'Switch',
-    save: 'Save',
-    cancel: 'Cancel',
-    delete: 'Delete',
-    reset_progress: 'Reset my progress',
+    nav_sign_in: 'Sign in',
+    nav_switch: 'Switch user',
+    reset_progress: 'Reset progress',
     delete_user: 'Delete user',
     study: 'Study',
     study_now: 'Study now',
-    force: '⚡ Force',
-    force_session: '⚡ Force session',
-    test: '📝 Test',
-    exam: '📝 Exam',
+    force: 'Force',
+    force_session: 'Force session',
+    test: 'Test',
+    exam: 'Exam',
+    view: 'View',
     questions: 'questions',
     question: 'Question',
-    answers: 'answers',
-    overall_accuracy: 'overall accuracy',
-    historic_accuracy: 'historic accuracy',
-    today: 'today',
     coverage: 'Coverage',
     accuracy: 'Accuracy',
-    details: 'Details',
-    hide: 'Hide',
+    accuracy_lc: 'accuracy',
+    acc_pct: '{n}% accuracy',
+    seen: 'Seen',
+    pct_seen: '{n}% seen',
+    seen_of: '{seen}/{total} seen',
     compare: 'Compare',
-    all: 'All',
+    compare_with: 'Compare your stats with {name}',
+    you: 'You',
+    average: 'Average',
+    diff: 'Diff.',
+    all_topics: 'All topics',
+    all_subjects: 'All',
     new_label: 'new',
     learning_label: 'learning',
     review_label: 'to review',
-    practice_label: 'practice',
-    never_seen: 'Unseen',
-    in_learning: 'Learning due now',
+    practice_label: 'Practice',
+    never_seen: 'Never seen',
+    in_learning: 'Learning cards due now',
     due_reviews: 'Reviews due today',
     bar_legend: 'Dark green: mastered (≥21 d) · green: review · red: learning · gray: new',
+    status_new: 'New',
+    status_learning: 'Learning',
+    status_review: 'Review',
+    ago_now: 'just now',
+    ago: '{v} ago',
+    unit_month: 'mo',
+    unit_year: 'y',
+    no_questions_scope: 'No questions available in this scope.',
 
-    // Themes & Languages
-    theme_light: '☀️ Light',
-    theme_dark: '🌙 Dark',
-    theme_auto: '💻 Auto',
+    // Theme & language
     theme_light_title: 'Light mode',
     theme_dark_title: 'Dark mode',
     theme_auto_title: 'Automatic (match system)',
-    lang_es: '🇪🇸 ES',
-    lang_en: '🇺🇸 EN',
+    lang_label: 'Language',
+    theme_label: 'Theme',
 
-    // User selection screen
+    // Users
     choose_user_title: 'Who are you?',
-    choose_user_subtitle: 'Select your name to start or create a new student profile:',
+    choose_user_subtitle: 'Pick your profile to continue or create a new one.',
+    no_users_yet: 'No students yet. Create the first one below.',
     new_student: 'New student',
     your_name: 'Your name',
     start_btn: 'Get started',
 
     // Grades
-    grade_sobresaliente: 'High Pass (A)',
-    grade_notable: 'Merit (B)',
+    grade_sobresaliente: 'Outstanding (A)',
+    grade_notable: 'Very good (B)',
     grade_aprobado: 'Pass (C)',
     grade_suspenso: 'Fail',
 
-    // Subjects & Topics
-    sp_name: 'Statistical Programming',
-    dm_name: 'Data Mining',
+    // Subjects & topics
     sp_t1: 'Topic 1 · Introduction to Programming & Python',
     sp_t2: 'Topic 2 · Python Language Fundamentals',
     sp_t3: 'Topic 3 · NumPy',
@@ -300,137 +410,223 @@ const I18N = {
     dm_t6: 'Topic 6 · Recommender Systems',
     dm_t7: 'Topic 7 · Online Advertising & BALANCE Algorithm',
     final_mock_name: 'Final Mock Exam',
-    final_mock_title: 'DATA 51000 Practice Final Exam',
-    final_mock_desc: 'Official 40-question practice final exam · 1 point each',
+    final_mock_desc: 'Official 40-question practice final · 1 point each',
 
     // Dashboard
-    expected_grade_banner: 'Expected exam grade:',
-    expected_grade_sub: 'Coverage: {cov}% ({seen}/{total} questions) · Accuracy: {acc}%',
-    view_ranking_btn: 'View Leaderboard →',
-    test_sim_title: '📝 Practice Test Simulator with Final Grade',
-    test_sim_desc: 'Test your knowledge across <b>all {total} questions</b> or customize your question count. Receive an official score out of 10 and detailed feedback.',
-    btn_final_mock: '🎓 Final Mock Exam (40)',
-    btn_test_all: '🚀 Test all ({total})',
-    btn_custom_test: '⚙️ Choose question count...',
-    global_title: 'Global',
-    global_desc: '{total} questions mixed from all topics of {subject}',
-    exams_section_title: 'Official Exams & Mock Tests',
-    topics_section_title: 'By Topic',
+    dashboard_greeting: 'Hi, {name}',
+    dashboard_sub: 'Here is your progress. Keep up with your reviews or test yourself.',
+    kpi_expected: 'Expected grade',
+    kpi_due: 'Due now',
+    kpi_due_sub: '+ {n} new unseen',
+    kpi_coverage_sub: '{seen} of {total} questions seen',
+    kpi_acc_sub: '{n} answers · {today} today',
+    view_ranking_btn: 'View leaderboard',
+    study_card_title: 'Study session',
+    study_card_sub: 'Spaced repetition across all {subject} topics',
+    cards_due_now: 'cards due now',
+    test_sim_title: 'Exam simulator',
+    test_sim_desc: 'Take a test with all {total} questions or choose how many. You get a score out of 10 and a detailed review.',
+    btn_final_mock: 'Final Mock Exam ({n})',
+    btn_test_all: 'Full test ({total})',
+    btn_custom_test: 'Custom test…',
+    exams_section_title: 'Official exams & mocks',
+    topics_section_title: 'Topics',
+    n_topics: '{n} topics',
     history_section_title: 'History',
-    most_missed_title: 'Most missed questions',
+    most_missed_title: 'Most missed',
     recent_answers_title: 'Recent answers',
     no_answers_yet: 'You have not answered any questions yet.',
+    no_misses_yet: 'No missed questions yet. Keep it up!',
     faq_summary: 'How do spaced repetition and test mode work?',
-    faq_p1: '<b>Study Mode (SRS SM-2):</b> Each question acts as a scheduled flashcard. Correct answers expand intervals in days; incorrect answers return cards for short-term review.',
-    faq_p2: '<b>Test / Exam Mode:</b> Allows you to take an exam simulation (or the full question pool). When finished, it calculates your <b>grade out of 10</b>, assigns academic status, and displays mistakes with explanations.',
+    faq_p1: '<b>Study mode (SRS SM-2):</b> each question is a flashcard scheduled by your memory. Correct answers grow the interval in days; misses bring the card back soon.',
+    faq_p2: '<b>Test / exam mode:</b> answer a batch of questions (or the full pool). At the end you get your <b>score out of 10</b>, a grade, and every mistake with its explanation.',
+    confirm_reset_title: 'Reset progress?',
+    confirm_reset_body: 'All progress and history for <b>{name}</b> will be erased. This cannot be undone.',
+    confirm_delete_title: 'Delete user?',
+    confirm_delete_body: 'The user <b>{name}</b> and all their history will be deleted. This cannot be undone.',
+    reset_done: 'Progress reset.',
 
     // Ratings (Anki SM-2)
     rating_again: 'Again',
     rating_hard: 'Hard',
     rating_good: 'Good',
     rating_easy: 'Easy',
-    check_btn: 'Check',
+    check_btn: 'Check answer',
     next_btn: 'Next',
-    select_all_prompt: 'Select all correct options and click <b>Check answer</b>.',
+    multi_hint: 'Select all correct options and press “Check answer”.',
+    correct_msg: 'Correct!',
+    incorrect_msg: 'Incorrect',
+    was_single: 'The correct answer was:',
+    were_multi: 'The correct answers were:',
+    key_space: 'Space',
+    kbd_single: 'Answer with {keys} or {letters}',
+    kbd_multi: 'Toggle with {keys} · {enter} to check',
+    kbd_rate: 'Rate with {keys} · {space} = Good',
+    kbd_continue: '{space} or {enter} to continue',
 
-    // Study View
+    // Study
     study_done_title: 'All caught up with {scope}!',
     study_done_sub: 'No cards are due right now.',
     next_due_in: 'Next card due in <b>{wait}</b>.',
-    btn_force_study: '⚡ Force study session',
+    btn_force_study: 'Force a study session',
     btn_practice_random: 'Practice anyway',
-    force_study_tip: '<b>⚡ Force study:</b> advance cards due in the future or review weak points while recalculating and solidifying memory intervals.',
-    practice_banner: 'Practice mode: your answers count toward history, but do not change spaced repetition schedules.',
+    force_study_tip: 'A forced session pulls cards forward before they are due or drills your weak spots.',
+    practice_banner: 'Practice mode: answers count toward your history but do not change when cards come back.',
+    forced_banner_resched: 'Forced session with SRS rescheduling: your ratings recalculate intervals starting today.',
+    forced_banner_no_resched: 'Forced review session: answers count toward your history but review dates stay unchanged.',
 
-    // Force Study Modal
-    force_modal_title: 'Force Study Session',
-    force_modal_sub: '{scope} · <b>{total}</b> questions available',
-    force_modal_desc: 'Study cards ahead of time without waiting for due dates. Reschedule intervals with Anki SM-2 to accelerate retention or conduct an intensive review of weak areas.',
-    how_many_cards: 'HOW MANY CARDS WOULD YOU LIKE TO STUDY?',
+    // Force study modal
+    force_modal_title: 'Force a study session',
+    force_modal_sub: '{scope} · {total} questions',
+    force_modal_desc: 'Study cards without waiting for them to be due: pull reviews forward or drill your weak spots.',
+    how_many_cards: 'How many cards?',
     cards_unit: 'cards',
-    all_cards_chip: '⭐ All ({total})',
+    all_cards_chip: 'All ({total})',
     exact_number: 'Exact count:',
     of_total: 'of {total}',
-    priority_criteria: 'PRIORITY & SELECTION CRITERIA',
-    strat_due_title: '🕒 Upcoming due dates first',
-    strat_due_desc: 'Reviews cards whose scheduled due date is closest.',
-    strat_hard_title: '🧠 Highest difficulty & most missed',
-    strat_hard_desc: 'Prioritizes cards with lowest ease factor or highest historic mistakes.',
-    strat_random_title: '🎲 Random / Entire syllabus',
-    strat_random_desc: 'Randomly draws questions across the selected syllabus.',
-    reschedule_cb_title: 'Reschedule with SRS algorithm (SM-2):',
-    reschedule_cb_desc: 'Rating with the 4 Anki buttons (Again, Hard, Good, Easy) recalculates intervals starting today, accelerating your real retention curve.',
-    btn_start_force: '⚡ Start Forced Session',
-    tag_forced_session: '⚡ Forced Session',
-    tag_forced_completed: '⚡ Forced Session Completed',
-    force_completed_title: 'Forced study session completed!',
-    force_completed_desc: 'Successfully reviewed <b>{total} cards</b> in <b>{scope}</b>.',
-    intervals_expanded: 'intervals expanded',
-    srs_active_label: 'SRS Active',
-    srs_active_sub: 'Cards rescheduled',
-    srs_review_label: 'Review',
+    priority_criteria: 'Selection strategy',
+    recommended: 'Recommended',
+    strat_due_title: 'Due soonest first',
+    strat_due_desc: 'Pulls forward the reviews with the closest due date.',
+    strat_hard_title: 'Hardest & most missed',
+    strat_hard_desc: 'Prioritizes cards with the lowest ease or most past mistakes.',
+    strat_random_title: 'Random',
+    strat_random_desc: 'Mixes questions from the whole selected pool.',
+    reschedule_cb_title: 'Reschedule with SRS (SM-2)',
+    reschedule_cb_desc: 'Rating (Again, Hard, Good, Easy) recalculates the interval from today. Uncheck to review without changing dates.',
+    btn_start_force: 'Start session',
+    tag_forced_session: 'Forced session',
+    tag_forced_completed: 'Forced session complete',
+    force_completed_title: 'Session complete!',
+    force_completed_desc: 'You reviewed <b>{total} cards</b> from <b>{scope}</b>.',
+    intervals_expanded: 'Intervals expanded',
+    srs_active_label: 'Mode',
+    srs_active_sub: 'Rescheduled',
+    srs_review_label: 'Mode',
     srs_review_sub: 'Dates unchanged',
-    btn_another_force: '⚡ Another forced session',
+    btn_another_force: 'Another round',
+    confirm_exit_force_title: 'Leave the forced session?',
+    confirm_exit_force_body: 'Cards you have already rated stay saved.',
 
-    // Test Modal & Execution
-    test_modal_title: '📝 Configure Practice Test',
-    mock_modal_title: '🎓 Configure Final Mock Exam',
-    mock_modal_sub: 'DATA 51000 Practice Final Exam · <b>{total}</b> questions available (1 point each)',
-    test_modal_sub: '{scope} · <b>{total}</b> questions available',
-    how_many_questions: 'HOW MANY QUESTIONS IN THE TEST?',
-    all_questions_chip: '⭐ All ({total})',
-    full_exam_chip: '⭐ Full exam ({total})',
+    // Test modal & run
+    test_modal_title: 'Set up a test',
+    mock_modal_title: 'Final Mock Exam',
+    mock_modal_sub: 'DATA 51000 Practice Final Exam · {total} questions (1 point each)',
+    test_modal_sub: '{scope} · {total} questions',
+    how_many_questions: 'How many questions?',
+    all_questions_chip: 'All ({total})',
+    full_exam_chip: 'Full exam ({total})',
     questions_unit: 'questions',
-    immediate_feedback_title: 'Immediate feedback:',
-    immediate_feedback_desc: 'see correct answer and explanation after each question',
-    shuffle_title: 'Shuffle questions:',
-    shuffle_desc: 'random order to avoid memorizing positions',
-    btn_start_test: '🚀 Start Test',
-    btn_start_exam: '🎓 Start Exam',
-    exit_test_btn: '← Exit test',
-    test_tag: '📝 Test · {topic}',
+    immediate_feedback_title: 'Immediate feedback',
+    immediate_feedback_desc: 'Show the correct answer and explanation after each question.',
+    shuffle_title: 'Shuffle questions',
+    shuffle_desc: 'Random order so you do not memorize positions.',
+    btn_start_test: 'Start test',
+    btn_start_exam: 'Start exam',
     question_counter: 'Question <b>{cur}</b> of <b>{total}</b>',
-    correct_msg: '✓ Correct answer!',
-    incorrect_msg: '✗ Incorrect answer',
-    was_single: 'Was:',
-    were_multi: 'Were:',
-    btn_next_question: 'Next question →',
-    btn_finish_test: 'Finish test & see score →',
+    btn_next_question: 'Next question',
+    btn_finish_test: 'Finish & see score',
+    confirm_exit_test_title: 'Leave the test?',
+    confirm_exit_test_body: 'You will lose your progress on this test.',
 
-    // Test Summary
-    test_results_title: '🏁 Test Results',
-    test_results_sub: '{scope} · {total} questions evaluated',
-    test_score_label: 'Your final test score',
-    mock_score_label: 'Final Mock Exam Score',
-    mock_points_detail: 'Score: <b style="color:{color}">{correct}</b> / {total} points (1 point per question)',
-    btn_repeat_test: '🔄 Retake this test',
-    btn_new_test: '📝 Take another test...',
-    btn_to_dashboard: '🏠 Go to dashboard',
-    feedback_excellent: 'Excellent result! You have mastered these subject questions with confidence.',
-    feedback_great: 'Great job! You have a solid command of the material. Review the mistakes below to aim for 10/10.',
-    feedback_pass: 'You passed the test! Take time to review the missed questions to reinforce your knowledge.',
-    feedback_fail: 'You did not reach the passing grade (5.0). Review the explanations below and try again.',
+    // Results
+    test_results_title: 'Test results',
+    test_results_sub: '{scope} · {total} questions',
+    test_score_label: 'Your score',
+    mock_score_label: 'Final Mock Exam score',
+    mock_points_detail: '<b>{correct}</b> / {total} points (1 point per question)',
+    btn_repeat_test: 'Retake test',
+    btn_new_test: 'Another test…',
+    btn_to_dashboard: 'Go to dashboard',
+    feedback_excellent: 'Excellent result! You have these questions mastered.',
+    feedback_great: 'Great job! Review the misses below to reach 10/10.',
+    feedback_pass: 'You passed! Take time to review the misses and lock in what you learned.',
+    feedback_fail: 'You did not reach 5.0. Review the explanations below and try again.',
+    correct_label: 'Correct',
+    incorrect_label: 'Incorrect',
+    to_review_below: 'Review them below',
+    time_label: 'Time',
+    avg_per_question: '{s} s per question',
+    topic_performance: 'Performance by topic',
+    n_correct: '{c}/{total} correct',
+    answer_review_title: 'Answer review',
+    filter_all: 'All ({n})',
+    filter_wrong: 'Missed ({n})',
+    filter_correct: 'Correct ({n})',
+    review_correct: 'Correct',
+    review_wrong: 'Missed',
+    tag_correct: 'Correct',
+    tag_yours: 'Your answer',
+    no_filter_match: 'No questions match this filter.',
 
-    // Ranking View
-    ranking_title: 'Class Leaderboard',
-    ranking_sub: '{scope} · predicted exam grade',
-    tab_general: '🌍 Overall (All)',
-    your_rank_is: 'Your rank: <b>#{rank}</b> of {total} students',
-    sort_by_label: 'Sort by:',
-    sort_score: 'Expected score (exam estimate)',
-    sort_coverage: 'Highest coverage (% syllabus seen)',
-    sort_reviews: 'Total reviews completed',
-    sort_accuracy: 'Overall accuracy percentage',
+    // Leaderboard
+    ranking_title: 'Class leaderboard',
+    ranking_sub: 'predicted exam grade',
+    loading_ranking: 'Loading class metrics…',
+    ranking_load_error: 'Could not load the leaderboard: {msg}',
+    your_rank_is: 'You are <b>#{rank}</b> of {total} students',
+    n_students: '{n} students',
+    sort_by_label: 'Sort by',
+    sort_score: 'Expected grade',
+    sort_accuracy: 'Accuracy',
+    sort_coverage: 'Coverage',
+    sort_mature: 'Mastered cards',
+    sort_reviews: 'Total reviews',
+    mastered: 'mastered',
+    mastered_long: 'Mastered (≥21 days)',
+    reps: 'reviews',
+    n_today: '{n} today',
+    podium_meta: '{cov}% seen · {n} reviews',
+    last_review: 'Last review {when}',
+    no_activity: 'No activity yet',
+    answers_today: '{n} answers today',
+    diagnosis: 'Diagnosis:',
+    topic_mastery: 'Grade and mastery by topic',
+    no_students_title: 'No students yet',
+    no_students_desc: 'Students will show up here once they start studying.',
+    advice_low: 'You have seen {cov}% of the material. Unlock the remaining {left} questions to have a shot at passing.',
+    advice_mid: 'You are at {cov}% coverage. {left} new questions left to study.',
+    advice_full: 'You have covered 100% of the questions! Consolidate the {n} cards in review to turn your {score}/10 into an A.',
+    advice_mastered: 'Great preparation! {n} cards mastered (≥21 days) with {acc}% accuracy. Keep up the reviews.',
+    ranking_faq_title: 'How is the expected grade calculated?',
+    ranking_faq_intro: 'The expected grade uses a <b>probabilistic retention model</b> that scores every question in the pool:',
+    ranking_faq_unseen: '<b>Unseen questions (0 points):</b> contribute nothing; you cannot pass without minimum coverage.',
+    ranking_faq_mature: '<b>Mature cards (≥21 days, ~94% retention):</b> consolidated in long-term memory.',
+    ranking_faq_young: '<b>Young cards (1–20 days, ~72–90%):</b> still settling; probability rises with the interval.',
+    ranking_faq_learning: '<b>Learning / relearning (~50%):</b> short initial steps or after a recent miss.',
+    ranking_faq_factor: '<b>Personal accuracy factor:</b> adjusted by your historical accuracy.',
+    ranking_faq_scale: '<b>Scale:</b> Fail (&lt; 5.0) · Pass (5.0–6.9) · Very good (7.0–8.9) · Outstanding (9.0–10).',
 
-    // Stats View
+    // Statistics
     stats_title: 'Statistics',
-    stats_progress_tab: '📈 My Progress',
-    stats_compare_tab: '👥 Compare',
-    time_7d: 'Last 7 days',
-    time_30d: 'Last 30 days',
-    time_all: 'All time',
-    class_average: '👥 Class average',
-  }
+    stats_sub: 'Progress for {name}',
+    stats_progress_tab: 'My progress',
+    stats_compare_tab: 'Compare',
+    class_load_error: 'Could not load class data: {msg}',
+    class_average: 'Class average',
+    range_7d: '7 days',
+    range_30d: '30 days',
+    range_all: 'All',
+    rank_of: 'Rank {rank} of {total}',
+    n_answers: '{n} answers',
+    streak: 'Streak',
+    day_in_row: 'day in a row',
+    days_in_row: 'days in a row',
+    activity_title: 'Activity',
+    activity_sub: 'Correct and missed answers per day, with cumulative accuracy',
+    no_activity_subject: 'You have not answered questions for this subject yet.',
+    by_subject: 'By subject',
+    by_topic: 'By topic',
+    chart_cum_accuracy: 'Cumulative accuracy',
+    chart_correct: 'Correct',
+    chart_wrong: 'Missed',
+    chart_answers_axis: 'answers',
+    compare_with_label: 'Compare with',
+    answers_cap: 'Answers',
+    score_by_subject: 'Grade by subject',
+    score_by_topic: 'Grade by topic',
+    cumulative_title: 'Questions answered (cumulative)',
+  },
 };
 
 let currentLang = localStorage.getItem('lewis-quiz-lang') || 'es';
@@ -440,17 +636,12 @@ let currentTheme = localStorage.getItem('lewis-quiz-theme') || 'auto';
 if (!['auto', 'light', 'dark'].includes(currentTheme)) currentTheme = 'auto';
 
 function t(key, params = {}) {
-  let str = (I18N[currentLang] && I18N[currentLang][key]) || (I18N['es'] && I18N['es'][key]) || key;
+  let str = I18N[currentLang][key] ?? I18N.es[key] ?? key;
   for (const [k, v] of Object.entries(params)) {
-    str = str.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
+    // Sustitución con función para que un `$` en el valor no se interprete como patrón.
+    str = str.replace(new RegExp(`\\{${k}\\}`, 'g'), () => String(v));
   }
   return str;
-}
-
-function tTopicName(subjectId, topicId) {
-  if (topicId === 'final-mock') return t('final_mock_name');
-  const key = `${subjectId}_t${topicId}`;
-  return t(key);
 }
 
 function setLang(lang) {
@@ -458,59 +649,54 @@ function setLang(lang) {
   currentLang = lang;
   localStorage.setItem('lewis-quiz-lang', lang);
   document.documentElement.lang = lang;
-  if (window.refreshCurrentView) {
-    window.refreshCurrentView();
-  }
+  if (window.refreshCurrentView) window.refreshCurrentView();
 }
 
+const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+// En modo automático se resuelve a claro/oscuro según el sistema, así el CSS solo depende de data-theme.
 function applyTheme(theme) {
   currentTheme = theme;
   localStorage.setItem('lewis-quiz-theme', theme);
-  const root = document.documentElement;
-  if (theme === 'auto') {
-    root.removeAttribute('data-theme');
-  } else {
-    root.setAttribute('data-theme', theme);
-  }
+  const dark = theme === 'dark' || (theme === 'auto' && darkQuery.matches);
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  if (window.onThemeChanged) window.onThemeChanged();
 }
 
 function setTheme(theme) {
   applyTheme(theme);
-  // Update theme toggle buttons active state in the DOM
   document.querySelectorAll('[data-set-theme]').forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.setTheme === theme);
   });
 }
 
-// Initial theme application
 applyTheme(currentTheme);
 document.documentElement.lang = currentLang;
-
-// Watch system theme change if in auto mode
-window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-  if (currentTheme === 'auto') {
-    applyTheme('auto');
-  }
+darkQuery.addEventListener('change', () => {
+  if (currentTheme === 'auto') applyTheme('auto');
 });
 
 function renderTopControls() {
+  const themes = [
+    ['light', 'sun', t('theme_light_title')],
+    ['auto', 'monitor', t('theme_auto_title')],
+    ['dark', 'moon', t('theme_dark_title')],
+  ];
   return `
-    <div class="top-controls" style="display:inline-flex;align-items:center;gap:6px">
-      <!-- Selector de Idioma -->
-      <div class="control-segment lang-segment" role="group" aria-label="Idioma / Language">
-        <button class="btn-ctrl ${currentLang === 'es' ? 'active' : ''}" data-set-lang="es" title="Español">🇪🇸 ES</button>
-        <button class="btn-ctrl ${currentLang === 'en' ? 'active' : ''}" data-set-lang="en" title="English">🇺🇸 EN</button>
+    <div class="top-controls">
+      <div class="seg compact" role="group" aria-label="${t('lang_label')}">
+        <button class="${currentLang === 'es' ? 'active' : ''}" data-set-lang="es" title="Español">ES</button>
+        <button class="${currentLang === 'en' ? 'active' : ''}" data-set-lang="en" title="English">EN</button>
       </div>
-      <!-- Selector de Tema (Luz / Auto / Oscuro) -->
-      <div class="control-segment theme-segment" role="group" aria-label="Tema / Theme">
-        <button class="btn-ctrl ${currentTheme === 'light' ? 'active' : ''}" data-set-theme="light" title="${t('theme_light_title')}">☀️</button>
-        <button class="btn-ctrl ${currentTheme === 'auto' ? 'active' : ''}" data-set-theme="auto" title="${t('theme_auto_title')}">💻</button>
-        <button class="btn-ctrl ${currentTheme === 'dark' ? 'active' : ''}" data-set-theme="dark" title="${t('theme_dark_title')}">🌙</button>
+      <div class="seg compact theme-segment" role="group" aria-label="${t('theme_label')}">
+        ${themes
+          .map(([id, ic, title]) => `<button class="${currentTheme === id ? 'active' : ''}" data-set-theme="${id}" title="${title}" aria-label="${title}">${icon(ic)}</button>`)
+          .join('')}
       </div>
     </div>`;
 }
 
-// Event delegation for theme & language controls
+// Delegación de eventos para los controles de tema e idioma (están en la barra superior de cada vista).
 document.addEventListener('click', (e) => {
   const langBtn = e.target.closest('[data-set-lang]');
   if (langBtn) {
@@ -522,15 +708,5 @@ document.addEventListener('click', (e) => {
   if (themeBtn) {
     e.preventDefault();
     setTheme(themeBtn.dataset.setTheme);
-    return;
   }
 });
-
-window.I18N = I18N;
-window.t = t;
-window.tTopicName = tTopicName;
-window.currentLang = currentLang;
-window.setLang = setLang;
-window.currentTheme = currentTheme;
-window.setTheme = setTheme;
-window.renderTopControls = renderTopControls;

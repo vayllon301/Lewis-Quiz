@@ -121,8 +121,8 @@ const SRS = (() => {
     if (h < 24) return `${Math.round(h)} h`;
     const d = Math.round(ms / DAY);
     if (d < 30) return `${d} d`;
-    if (d < 365) return `${+(d / 30).toFixed(1)} mes`;
-    return `${+(d / 365).toFixed(1)} a`;
+    if (d < 365) return `${+(d / 30).toFixed(1)} ${t('unit_month')}`;
+    return `${+(d / 365).toFixed(1)} ${t('unit_year')}`;
   }
 
   // Texto para mostrar encima de cada botón (como Anki).
