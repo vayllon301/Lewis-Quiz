@@ -25,9 +25,16 @@ async function showStats({ view = 'progress', subjectId = state.subject.id, peer
   statsState.subjectId = subjectId;
   if (peerId) statsState.peerId = peerId;
 
+  const tFn = window.t || ((k) => k);
   $app.innerHTML = `
-    <div class="header row spread"><h1>📊 Estadísticas</h1><button class="link" id="stats-back">← Volver</button></div>
-    <div class="card" style="text-align:center;padding:40px"><p class="muted">Cargando…</p></div>`;
+    <div class="header row spread" style="flex-wrap:wrap;gap:10px">
+      <h1>📊 ${tFn('stats_title')}</h1>
+      <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
+        ${window.renderTopControls ? window.renderTopControls() : ''}
+        <button class="link" id="stats-back">${tFn('back')}</button>
+      </div>
+    </div>
+    <div class="card" style="text-align:center;padding:40px"><p class="muted">${tFn('loading')}</p></div>`;
   $app.querySelector('#stats-back').onclick = () => showDashboard();
 
   let users;
@@ -105,8 +112,9 @@ function statsProfile(user, subj) {
 function statsClassProfile(profiles) {
   const avg = (f) => mean(profiles.map(f));
   const accs = profiles.map((p) => p.accuracy).filter((a) => a !== null);
+  const tFn = window.t || ((k) => k);
   return {
-    name: 'Media de la clase',
+    name: tFn('class_average'),
     score: round1(avg((p) => p.score)),
     accuracy: accs.length ? Math.round(mean(accs)) : null,
     coverage: Math.round(avg((p) => p.coverage)),
@@ -145,18 +153,22 @@ function renderStats() {
   const me = profiles[0];
   const { view } = statsState;
 
+  const tFn = window.t || ((k) => k);
   $app.innerHTML = `
-    <div class="header row spread">
-      <div><h1>📊 Estadísticas</h1><div class="muted small">${esc(state.user.name)}</div></div>
-      <button class="link" id="stats-back">← Volver</button>
+    <div class="header row spread" style="flex-wrap:wrap;gap:10px">
+      <div><h1>📊 ${tFn('stats_title')}</h1><div class="muted small">${esc(state.user.name)}</div></div>
+      <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
+        ${window.renderTopControls ? window.renderTopControls() : ''}
+        <button class="link" id="stats-back">${tFn('back')}</button>
+      </div>
     </div>
     <div class="stats-toggles">
       <div class="seg">
-        <button data-stats-view="progress" class="${view === 'progress' ? 'active' : ''}">Mi progreso</button>
-        <button data-stats-view="compare" class="${view === 'compare' ? 'active' : ''}">Comparar</button>
+        <button data-stats-view="progress" class="${view === 'progress' ? 'active' : ''}">${tFn('stats_progress_tab')}</button>
+        <button data-stats-view="compare" class="${view === 'compare' ? 'active' : ''}">${tFn('stats_compare_tab')}</button>
       </div>
       <div class="tabs">
-        <button data-stats-subject="all" class="${subj === 'all' ? 'active' : ''}">Todas</button>
+        <button data-stats-subject="all" class="${subj === 'all' ? 'active' : ''}">${tFn('all')}</button>
         ${SUBJECTS.map((s) => `<button data-stats-subject="${s.id}" class="${s === subj ? 'active' : ''}">${esc(s.name)}</button>`).join('')}
       </div>
     </div>
@@ -430,3 +442,5 @@ function statsDestroyCharts() {
   statsState.charts.forEach((ch) => ch.destroy());
   statsState.charts = [];
 }
+
+window.renderStats = renderStats;

@@ -3,7 +3,12 @@
 const $app = document.getElementById('app');
 const Q = Object.fromEntries(SUBJECTS.flatMap((s) => s.questions.map((q) => [q.id, q])));
 const LETTERS = 'ABCDEF';
-const RATING_LABEL = { again: 'Otra vez', hard: 'Difícil', good: 'Bien', easy: 'Fácil' };
+const RATING_LABEL = {
+  get again() { return window.t ? window.t('rating_again') : 'Otra vez'; },
+  get hard() { return window.t ? window.t('rating_hard') : 'Difícil'; },
+  get good() { return window.t ? window.t('rating_good') : 'Bien'; },
+  get easy() { return window.t ? window.t('rating_easy') : 'Fácil'; },
+};
 
 const state = {
   users: [],
@@ -48,20 +53,31 @@ function stopTimer() {
   state.timer = null;
 }
 
+const tSubjectName = (subjId) => {
+  const s = SUBJECTS.find((sub) => sub.id === subjId);
+  return s ? s.name : subjId;
+};
+
 const scopeIds = (scope) => {
   if (scope === 'all') return state.subject.questions.map((q) => q.id);
   if (scope === 'final-mock') return state.subject.questions.filter((q) => q.exam === 'final-mock').map((q) => q.id);
   return state.subject.questions.filter((q) => q.topic === scope).map((q) => q.id);
 };
-const scopeName = (scope) => {
-  if (scope === 'all') return `${state.subject.name} · todos los temas`;
-  if (scope === 'final-mock') return `${state.subject.name} · Final Mock Exam (40 preguntas)`;
-  return topicName(scope);
-};
+
 const topicName = (id) => {
-  if (id === 'final-mock') return 'Final Mock Exam';
-  const t = state.subject.topics.find((t) => t.id === id);
-  return t ? t.name : String(id);
+  if (id === 'final-mock') return window.t ? window.t('final_mock_name') : 'Final Mock Exam';
+  const tKey = `${state.subject.id}_t${id}`;
+  if (window.I18N && window.I18N[currentLang] && window.I18N[currentLang][tKey]) {
+    return window.I18N[currentLang][tKey];
+  }
+  const tObj = state.subject.topics.find((t) => t.id === id);
+  return tObj ? tObj.name : String(id);
+};
+
+const scopeName = (scope) => {
+  if (scope === 'all') return `${tSubjectName(state.subject.id)} · ${window.t ? window.t('all') : 'Todas'}`;
+  if (scope === 'final-mock') return `${tSubjectName(state.subject.id)} · ${window.t ? window.t('final_mock_name') : 'Final Mock Exam'} (40 ${window.t ? window.t('questions') : 'preguntas'})`;
+  return topicName(scope);
 };
 
 // Preguntas de respuesta múltiple: `answer` es un array y hay que marcar exactamente esas opciones.
@@ -84,10 +100,11 @@ function timeAgo(t) {
 // ---------------- Modelo de Métricas y Nota Esperada ----------------
 
 function getGradeInfo(score) {
-  if (score >= 9.0) return { text: 'Sobresaliente', cls: 'badge-sobresaliente', color: '#f59e0b' };
-  if (score >= 7.0) return { text: 'Notable', cls: 'badge-notable', color: '#15803d' };
-  if (score >= 5.0) return { text: 'Aprobado', cls: 'badge-aprobado', color: '#2563eb' };
-  return { text: 'Suspenso', cls: 'badge-suspenso', color: '#b91c1c' };
+  const tFn = window.t || ((k) => k);
+  if (score >= 9.0) return { text: tFn('grade_sobresaliente'), cls: 'badge-sobresaliente', color: '#f59e0b' };
+  if (score >= 7.0) return { text: tFn('grade_notable'), cls: 'badge-notable', color: '#15803d' };
+  if (score >= 5.0) return { text: tFn('grade_aprobado'), cls: 'badge-aprobado', color: '#2563eb' };
+  return { text: tFn('grade_suspenso'), cls: 'badge-suspenso', color: '#b91c1c' };
 }
 
 function calcUserMetrics(user, subjectOrAll) {
@@ -244,20 +261,25 @@ async function showUsers() {
   } catch (e) {
     toast(e.message);
   }
+  const tFn = window.t || ((k) => k);
   $app.innerHTML = `
-    <div class="header row spread">
+    <div class="header row spread" style="flex-wrap:wrap;gap:10px">
       <div>
-        <h1>🧠 Lewis Quiz</h1>
-        <div class="muted">${SUBJECTS.map((s) => esc(s.name)).join(' · ')} · repaso espaciado y simulador de tests</div>
+        <h1>🧠 ${tFn('app_title')}</h1>
+        <div class="muted small">${SUBJECTS.map((s) => esc(s.name)).join(' · ')}</div>
       </div>
-      <button class="btn-ranking" id="public-ranking-btn">🏆 Ranking de la clase</button>
+      <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
+        ${window.renderTopControls ? window.renderTopControls() : ''}
+        <button class="btn-ranking" id="public-ranking-btn">🏆 ${tFn('nav_ranking')}</button>
+      </div>
     </div>
     <div class="card stack">
-      <h2 style="margin-top:0">¿Quién eres?</h2>
-      ${state.users.length ? `<div class="users">${state.users.map((u) => `<button data-user="${u.id}">👤 ${esc(u.name)}</button>`).join('')}</div>` : '<p class="muted">Aún no hay usuarios. Crea el tuyo:</p>'}
+      <h2 style="margin-top:0">${tFn('choose_user_title')}</h2>
+      <p class="muted small" style="margin-top:-6px;margin-bottom:8px">${tFn('choose_user_subtitle')}</p>
+      ${state.users.length ? `<div class="users">${state.users.map((u) => `<button data-user="${u.id}">👤 ${esc(u.name)}</button>`).join('')}</div>` : `<p class="muted">${tFn('choose_user_subtitle')}</p>`}
       <form id="new-user" class="row" style="margin-top:16px">
-        <input name="name" placeholder="Nombre del nuevo usuario" maxlength="40" required style="flex:1">
-        <button class="primary">Crear</button>
+        <input name="name" placeholder="${tFn('your_name')}" maxlength="40" required style="flex:1">
+        <button class="primary">${tFn('start_btn')}</button>
       </form>
     </div>`;
   $app.querySelectorAll('[data-user]').forEach((b) => (b.onclick = () => openUser(b.dataset.user)));
@@ -288,16 +310,18 @@ async function openUser(id) {
 // ---------------- Panel Principal ----------------
 
 function countsHtml(c) {
+  const tFn = window.t || ((k) => k);
   return `<div class="counts">
-    <span class="n-new" title="Nunca vistas">${c.new} nuevas</span>
-    <span class="n-learn" title="En aprendizaje que tocan ya">${c.dueLearn} aprendiendo</span>
-    <span class="n-review" title="Repasos que tocan hoy">${c.dueReview} para repasar</span>
+    <span class="n-new" title="${tFn('never_seen')}">${c.new} ${tFn('new_label')}</span>
+    <span class="n-learn" title="${tFn('in_learning')}">${c.dueLearn} ${tFn('learning_label')}</span>
+    <span class="n-review" title="${tFn('due_reviews')}">${c.dueReview} ${tFn('review_label')}</span>
   </div>`;
 }
 
 function barHtml(c) {
   const pct = (n) => (100 * n) / c.total;
-  return `<div class="bar" title="Verde oscuro: dominadas (≥21 d) · verde: en repaso · rojo: aprendiendo · gris: nuevas">
+  const tFn = window.t || ((k) => k);
+  return `<div class="bar" title="${tFn('bar_legend')}">
     <span style="width:${pct(c.mature)}%;background:var(--review)"></span>
     <span style="width:${pct(c.young)}%;background:color-mix(in srgb, var(--review) 45%, transparent)"></span>
     <span style="width:${pct(c.learning)}%;background:var(--learn)"></span>
@@ -315,6 +339,7 @@ function showDashboard() {
   const today = log.filter((e) => e.t >= midnight);
   const acc = accuracy(log);
 
+  const tFn = window.t || ((k, p) => k);
   // Métricas del usuario actual para la asignatura activa
   const metrics = calcUserMetrics(user, subject);
 
@@ -324,15 +349,15 @@ function showDashboard() {
       const a = accuracy(log.filter((e) => Q[e.qid]?.topic === t.id));
       return `<div class="card topic">
       <div class="info">
-        <div class="name">${esc(t.name)}</div>
-        <div class="row spread small"><span class="muted">${c.total} preguntas${a !== null ? ` · ${a}% acierto` : ''}</span></div>
+        <div class="name">${esc(topicName(t.id))}</div>
+        <div class="row spread small"><span class="muted">${c.total} ${tFn('questions')}${a !== null ? ` · ${a}% ${tFn('accuracy').toLowerCase()}` : ''}</span></div>
         ${countsHtml(c)}
         ${barHtml(c)}
       </div>
       <div class="row" style="gap:6px;flex-wrap:wrap">
-        <button class="btn-force-study-outline" data-force-study="${t.id}" title="Forzar sesión de estudio adelantada de este tema">⚡ Forzar</button>
-        <button class="btn-test-outline" data-test="${t.id}" title="Hacer test de este tema con nota final">📝 Test</button>
-        <button class="primary" data-scope="${t.id}">Estudiar</button>
+        <button class="btn-force-study-outline" data-force-study="${t.id}" title="${tFn('force')}">${tFn('force')}</button>
+        <button class="btn-test-outline" data-test="${t.id}" title="${tFn('test')}">${tFn('test')}</button>
+        <button class="primary" data-scope="${t.id}">${tFn('study')}</button>
       </div>
     </div>`;
     })
@@ -347,13 +372,14 @@ function showDashboard() {
   const recent = log.slice(-15).reverse();
 
   $app.innerHTML = `
-    <div class="header row spread" style="flex-wrap:wrap">
-      <div><h1>🧠 Lewis Quiz</h1><div class="muted small">${esc(subject.name)}</div></div>
-      <div class="row" style="flex-wrap:wrap;gap:8px">
-        <button class="btn-ranking" id="btn-stats">📊 Estadísticas</button>
-        <button class="btn-ranking" id="btn-ranking">🏆 Ranking</button>
+    <div class="header row spread" style="flex-wrap:wrap;gap:10px">
+      <div><h1>🧠 ${tFn('app_title')}</h1><div class="muted small">${esc(tSubjectName(subject.id))}</div></div>
+      <div class="row" style="flex-wrap:wrap;gap:8px;align-items:center">
+        ${window.renderTopControls ? window.renderTopControls() : ''}
+        <button class="btn-ranking" id="btn-stats">📊 ${tFn('nav_stats')}</button>
+        <button class="btn-ranking" id="btn-ranking">🏆 ${tFn('nav_ranking')}</button>
         <span>👤 <b>${esc(user.name)}</b></span>
-        <button class="link" id="switch">Cambiar</button>
+        <button class="link" id="switch">${tFn('nav_switch')}</button>
       </div>
     </div>
     ${
@@ -363,46 +389,51 @@ function showDashboard() {
     }
 
     <!-- Banner de Nota Esperada y Ranking -->
-    <div class="user-rank-banner" id="banner-ranking" title="Ver ranking y comparativa de notas">
+    <div class="user-rank-banner" id="banner-ranking" title="${tFn('view_ranking_btn')}">
       <div class="left">
         <div class="rank-badge">🏆</div>
         <div>
-          <div style="font-weight:700">Nota esperada en el examen: <span style="font-size:1.15rem;color:${metrics.grade.color}">${metrics.expectedScore} / 10</span>
+          <div style="font-weight:700">${tFn('expected_grade_banner')} <span style="font-size:1.15rem;color:${metrics.grade.color}">${metrics.expectedScore} / 10</span>
             <span class="badge-grade ${metrics.grade.cls}">${metrics.grade.text}</span>
           </div>
           <div class="small muted" style="margin-top:2px">
-            Cobertura: <b>${metrics.coverage}%</b> (${metrics.studied}/${metrics.total} preguntas) · Acierto: <b>${metrics.accuracyPct !== null ? metrics.accuracyPct + '%' : '–'}</b>
+            ${tFn('expected_grade_sub', {
+              cov: metrics.coverage,
+              seen: metrics.studied,
+              total: metrics.total,
+              acc: metrics.accuracyPct !== null ? metrics.accuracyPct : '–'
+            })}
           </div>
           <div class="score-meter" style="max-width:260px;margin-top:6px">
             <div class="score-meter-fill" style="width:${Math.min(100, metrics.expectedScore * 10)}%;background:${metrics.grade.color}"></div>
           </div>
         </div>
       </div>
-      <button class="primary" style="padding:6px 12px;font-size:.88rem">Ver Ranking →</button>
+      <button class="primary" style="padding:6px 12px;font-size:.88rem">${tFn('view_ranking_btn')}</button>
     </div>
 
     <!-- Destacado: Modo Test de Examen con Nota Final -->
     <div class="card" style="margin-bottom:18px;border-left:5px solid #059669;background:color-mix(in srgb, #059669 6%, var(--card))">
       <div class="row spread" style="align-items:center;flex-wrap:wrap;gap:12px">
         <div style="flex:1;min-width:240px">
-          <div style="font-weight:700;font-size:1.06rem;color:var(--text)">📝 Simulador de Test con Nota Final</div>
+          <div style="font-weight:700;font-size:1.06rem;color:var(--text)">${tFn('test_sim_title')}</div>
           <div class="muted small" style="margin-top:2px">
-            Ponte a prueba con un test de <b>todas las ${all.total} preguntas</b> o elige cuántas quieres. Al finalizar obtendrás tu nota oficial sobre 10 y revisión detallada.
+            ${tFn('test_sim_desc', { total: all.total })}
           </div>
         </div>
         <div class="row" style="gap:8px;flex-wrap:wrap">
           ${
             subject.exams && subject.exams.some((e) => e.id === 'final-mock')
-              ? `<button class="btn-test" data-test="final-mock" style="background:#4338ca;border-color:#4338ca" title="Hacer el Final Mock Exam oficial (40 preguntas)">
-            🎓 Final Mock Exam (40)
+              ? `<button class="btn-test" data-test="final-mock" style="background:#4338ca;border-color:#4338ca" title="${tFn('final_mock_desc')}">
+            ${tFn('btn_final_mock')}
           </button>`
               : ''
           }
-          <button class="btn-test" id="btn-quick-full-test" title="Hacer test con todas las preguntas del temario">
-            🚀 Test de todas (${all.total})
+          <button class="btn-test" id="btn-quick-full-test" title="${tFn('btn_test_all', { total: all.total })}">
+            ${tFn('btn_test_all', { total: all.total })}
           </button>
-          <button class="btn-test-outline" id="btn-custom-test" title="Abrir selector de cantidad de preguntas">
-            ⚙️ Elegir cuántas preguntas...
+          <button class="btn-test-outline" id="btn-custom-test" title="${tFn('btn_custom_test')}">
+            ${tFn('btn_custom_test')}
           </button>
         </div>
       </div>
@@ -412,21 +443,21 @@ function showDashboard() {
     <div class="card">
       <div class="row spread" style="align-items:flex-start">
         <div style="flex:1">
-          <div class="name"><b>Global</b> <span class="muted small">· ${all.total} preguntas de todos los temas de ${esc(subject.name)} mezcladas</span></div>
+          <div class="name"><b>${tFn('global_title')}</b> <span class="muted small">· ${tFn('global_desc', { total: all.total, subject: esc(tSubjectName(subject.id)) })}</span></div>
           ${countsHtml(all)}
           ${barHtml(all)}
         </div>
         <div class="row" style="gap:8px;flex-wrap:wrap">
-          <button class="btn-force-study-outline" data-force-study="all" title="Forzar sesión de estudio adelantada de todo el temario">⚡ Forzar sesión</button>
-          <button class="btn-test" data-test="all" title="Hacer test de todas las preguntas">📝 Test</button>
-          <button class="primary" data-scope="all" title="Estudio espaciado Anki">Estudiar</button>
+          <button class="btn-force-study-outline" data-force-study="all" title="${tFn('force_session')}">${tFn('force_session')}</button>
+          <button class="btn-test" data-test="all" title="${tFn('test')}">${tFn('test')}</button>
+          <button class="primary" data-scope="all" title="${tFn('study')}">${tFn('study')}</button>
         </div>
       </div>
     </div>
 
     ${
       subject.exams && subject.exams.length
-        ? `<h2>Exámenes Oficiales y Simulacros</h2>
+        ? `<h2>${tFn('exams_section_title')}</h2>
     <div class="stack">
       ${subject.exams
         .map((ex) => {
@@ -434,15 +465,15 @@ function showDashboard() {
           const a = accuracy(log.filter((e) => Q[e.qid]?.exam === ex.id));
           return `<div class="card topic" style="border-left:5px solid var(--accent);background:color-mix(in srgb, var(--accent) 4%, var(--card))">
         <div class="info">
-          <div class="name">🎓 <b>${esc(ex.name)}</b> <span class="tag" style="background:var(--accent-soft);color:var(--accent);font-weight:700">${ex.count} preguntas</span></div>
-          <div class="row spread small" style="margin-top:2px"><span class="muted">${esc(ex.description || ex.title)}${a !== null ? ` · ${a}% acierto histórico` : ''}</span></div>
+          <div class="name">🎓 <b>${esc(ex.id === 'final-mock' ? tFn('final_mock_name') : ex.name)}</b> <span class="tag" style="background:var(--accent-soft);color:var(--accent);font-weight:700">${ex.count} ${tFn('questions')}</span></div>
+          <div class="row spread small" style="margin-top:2px"><span class="muted">${esc(ex.id === 'final-mock' ? tFn('final_mock_desc') : (ex.description || ex.title))}${a !== null ? ` · ${a}% ${tFn('historic_accuracy')}` : ''}</span></div>
           ${countsHtml(c)}
           ${barHtml(c)}
         </div>
         <div class="row" style="gap:6px;flex-wrap:wrap">
-          <button class="btn-force-study-outline" data-force-study="${ex.id}" title="Forzar sesión de estudio adelantada de este examen">⚡ Forzar</button>
-          <button class="btn-test" data-test="${ex.id}" title="Hacer el examen completo con nota oficial">📝 Examen</button>
-          <button class="primary" data-scope="${ex.id}" title="Estudio espaciado Anki de este examen">Estudiar</button>
+          <button class="btn-force-study-outline" data-force-study="${ex.id}" title="${tFn('force')}">${tFn('force')}</button>
+          <button class="btn-test" data-test="${ex.id}" title="${tFn('exam')}">${tFn('exam')}</button>
+          <button class="primary" data-scope="${ex.id}" title="${tFn('study')}">${tFn('study')}</button>
         </div>
       </div>`;
         })
@@ -451,38 +482,38 @@ function showDashboard() {
         : ''
     }
 
-    <h2>Por temas</h2>
+    <h2>${tFn('topics_section_title')}</h2>
     <div class="stack">${topicRows}</div>
 
-    <h2>Historial</h2>
+    <h2>${tFn('history_section_title')}</h2>
     <div class="stats">
-      <div class="card stat"><b>${log.length}</b><span class="muted small">respuestas</span></div>
-      <div class="card stat"><b>${acc === null ? '–' : acc + '%'}</b><span class="muted small">acierto global</span></div>
-      <div class="card stat"><b>${today.length}</b><span class="muted small">hoy</span></div>
+      <div class="card stat"><b>${log.length}</b><span class="muted small">${tFn('answers')}</span></div>
+      <div class="card stat"><b>${acc === null ? '–' : acc + '%'}</b><span class="muted small">${tFn('overall_accuracy')}</span></div>
+      <div class="card stat"><b>${today.length}</b><span class="muted small">${tFn('today')}</span></div>
     </div>
     ${
       worst.length
-        ? `<div class="card" style="margin-top:10px"><b>Las que más fallas</b><ul class="list small" style="margin-top:6px">
+        ? `<div class="card" style="margin-top:10px"><b>${tFn('most_missed_title')}</b><ul class="list small" style="margin-top:6px">
       ${worst.map(([id, n]) => `<li><span class="bad">✗${n}</span><span class="q" title="${esc(Q[id].q)}">${esc(Q[id].q)}</span><span class="muted">T${Q[id].topic}</span></li>`).join('')}
     </ul></div>`
         : ''
     }
     ${
       recent.length
-        ? `<div class="card" style="margin-top:10px"><b>Últimas respuestas</b><ul class="list small" style="margin-top:6px">
-      ${recent.map((e) => `<li><span class="${e.correct ? 'ok' : 'bad'}">${e.correct ? '✓' : '✗'}</span><span class="q" title="${esc(Q[e.qid].q)}">${esc(Q[e.qid].q)}</span><span class="muted">${e.practice ? 'práctica' : RATING_LABEL[e.rating]} · ${timeAgo(e.t)}</span></li>`).join('')}
+        ? `<div class="card" style="margin-top:10px"><b>${tFn('recent_answers_title')}</b><ul class="list small" style="margin-top:6px">
+      ${recent.map((e) => `<li><span class="${e.correct ? 'ok' : 'bad'}">${e.correct ? '✓' : '✗'}</span><span class="q" title="${esc(Q[e.qid].q)}">${esc(Q[e.qid].q)}</span><span class="muted">${e.practice ? tFn('practice_label') : RATING_LABEL[e.rating]} · ${timeAgo(e.t)}</span></li>`).join('')}
     </ul></div>`
-        : '<p class="muted small">Todavía no has respondido ninguna pregunta.</p>'
+        : `<p class="muted small">${tFn('no_answers_yet')}</p>`
     }
 
     <details class="small muted" style="margin-top:24px">
-      <summary>¿Cómo funciona el repaso espaciado y el modo test?</summary>
-      <p><b>Modo Estudio (SRS SM-2):</b> Cada pregunta es una tarjeta programada según tu memoria. Al acertar, su intervalo crece en días. Si fallas, vuelve a corto plazo.</p>
-      <p><b>Modo Test / Examen:</b> Te permite examinarte con una tanda de preguntas (o el 100% del temario). Al terminar te calcula tu <b>nota sobre 10</b>, te asigna calificación académica (Suspenso, Aprobado, Notable, Sobresaliente) y te muestra un desglose de fallos y explicaciones.</p>
+      <summary>${tFn('faq_summary')}</summary>
+      <p>${tFn('faq_p1')}</p>
+      <p>${tFn('faq_p2')}</p>
     </details>
     <div class="row" style="margin-top:10px">
-      <button class="link small" id="reset">Reiniciar mi progreso</button>
-      <button class="link small" id="delete">Borrar usuario</button>
+      <button class="link small" id="reset">${tFn('reset_progress')}</button>
+      <button class="link small" id="delete">${tFn('delete_user')}</button>
     </div>`;
 
   $app.querySelectorAll('[data-subject]').forEach((b) => {
@@ -564,53 +595,53 @@ function openForceStudyModal(scope = 'all') {
         <div>
           <div class="row" style="gap:8px;align-items:center">
             <span style="font-size:1.35rem">⚡</span>
-            <h2 style="margin:0;font-size:1.25rem">Forzar Sesión de Estudio</h2>
+            <h2 style="margin:0;font-size:1.25rem">${(window.t || ((k)=>k))('force_modal_title')}</h2>
           </div>
-          <div class="muted small" style="margin-top:2px">${esc(scopeName(scope))} · <b>${totalAvailable}</b> preguntas disponibles</div>
+          <div class="muted small" style="margin-top:2px">${esc(scopeName(scope))} · <b>${totalAvailable}</b> ${(window.t || ((k)=>k))('questions')}</div>
         </div>
         <button class="link" id="btn-close-force-modal" style="font-size:1.4rem;line-height:1;padding:0 4px">✕</button>
       </div>
 
       <p class="small muted" style="margin:6px 0 0;line-height:1.5">
-        Estudia tarjetas sin esperar a que venzan. Puedes reprogramar tus intervalos SRS con Anki SM-2 para acelerar tu retención o hacer un repaso intensivo de tus puntos débiles.
+        ${(window.t || ((k)=>k))('force_modal_sub')}
       </p>
 
       <div style="margin-top:14px">
-        <label class="small muted" style="font-weight:700;display:block;margin-bottom:6px">¿CUÁNTAS TARJETAS QUIERES ESTUDIAR?</label>
+        <label class="small muted" style="font-weight:700;display:block;margin-bottom:6px">${(window.t || ((k)=>k))('force_modal_how_many')}</label>
         <div class="chip-group">
-          ${presets.map((p, i) => `<button class="chip-btn ${i === 0 ? 'active' : ''}" data-force-chip="${p}">${p} tarjetas</button>`).join('')}
-          <button class="chip-btn ${presets.length === 0 ? 'active' : ''}" data-force-chip="${totalAvailable}">⭐ Todas (${totalAvailable})</button>
+          ${presets.map((p, i) => `<button class="chip-btn ${i === 0 ? 'active' : ''}" data-force-chip="${p}">${p} ${(window.t || ((k)=>k))('questions')}</button>`).join('')}
+          <button class="chip-btn ${presets.length === 0 ? 'active' : ''}" data-force-chip="${totalAvailable}">⭐ ${(window.t || ((k)=>k))('all')} (${totalAvailable})</button>
         </div>
         
         <div class="row" style="margin-top:10px;gap:8px">
-          <span class="small muted">Número exacto:</span>
+          <span class="small muted">${(window.t || ((k)=>k))('exact_number')}</span>
           <input type="number" id="force-count-input" min="1" max="${totalAvailable}" value="${defaultCount}" style="width:110px;font-weight:700;text-align:center">
-          <span class="small muted">de ${totalAvailable}</span>
+          <span class="small muted">${(window.t || ((k, p)=>k))('of_total', { total: totalAvailable })}</span>
         </div>
       </div>
 
       <div style="margin-top:14px">
-        <label class="small muted" style="font-weight:700;display:block;margin-bottom:6px">CRITERIO DE PRIORIDAD Y SELECCIÓN</label>
+        <label class="small muted" style="font-weight:700;display:block;margin-bottom:6px">${(window.t || ((k)=>k))('force_modal_criteria')}</label>
         <div class="stack" style="gap:8px">
           <label class="row" style="cursor:pointer;gap:10px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card)">
             <input type="radio" name="force-strategy" value="due" checked>
             <div style="flex:1">
-              <div style="font-weight:600;font-size:.9rem">🕒 Próximas a vencer primero <span class="tag" style="font-size:.7rem;margin-left:4px">Recomendado</span></div>
-              <div class="muted small">Adelanta los repasos cuya fecha de vencimiento está más próxima en el tiempo.</div>
+              <div style="font-weight:600;font-size:.9rem">🕒 ${(window.t || ((k)=>k))('force_modal_due_title')} <span class="tag" style="font-size:.7rem;margin-left:4px">${(window.t || ((k)=>k))('recommended')}</span></div>
+              <div class="muted small">${(window.t || ((k)=>k))('force_modal_due_desc')}</div>
             </div>
           </label>
           <label class="row" style="cursor:pointer;gap:10px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card)">
             <input type="radio" name="force-strategy" value="hard">
             <div style="flex:1">
-              <div style="font-weight:600;font-size:.9rem">🧠 Mayor dificultad y más falladas</div>
-              <div class="muted small">Prioriza tarjetas con menor facilidad (ease) o con más fallos históricos.</div>
+              <div style="font-weight:600;font-size:.9rem">🧠 ${(window.t || ((k)=>k))('force_modal_hard_title')}</div>
+              <div class="muted small">${(window.t || ((k)=>k))('force_modal_hard_desc')}</div>
             </div>
           </label>
           <label class="row" style="cursor:pointer;gap:10px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card)">
             <input type="radio" name="force-strategy" value="random">
             <div style="flex:1">
-              <div style="font-weight:600;font-size:.9rem">🎲 Aleatorio / Temario completo</div>
-              <div class="muted small">Mezcla libremente preguntas de todo el temario seleccionado.</div>
+              <div style="font-weight:600;font-size:.9rem">🎲 ${(window.t || ((k)=>k))('force_modal_random_title')}</div>
+              <div class="muted small">${(window.t || ((k)=>k))('force_modal_random_desc')}</div>
             </div>
           </label>
         </div>
@@ -620,16 +651,16 @@ function openForceStudyModal(scope = 'all') {
         <label class="row" style="cursor:pointer;gap:10px;align-items:flex-start">
           <input type="checkbox" id="force-reschedule-cb" checked style="margin-top:3px">
           <div class="small">
-            <b>Reprogramar con algoritmo SRS (SM-2):</b>
-            <div class="muted" style="margin-top:2px">Al calificar con los 4 botones de Anki (Otra vez, Difícil, Bien, Fácil), el nuevo intervalo se recalcula a partir de hoy, adelantando tu curva de retención real.</div>
+            <b>${(window.t || ((k)=>k))('force_modal_resched_title')}</b>
+            <div class="muted" style="margin-top:2px">${(window.t || ((k)=>k))('force_modal_resched_desc')}</div>
           </div>
         </label>
       </div>
 
       <div class="row spread" style="margin-top:18px">
-        <button class="link" id="btn-cancel-force-modal">Cancelar</button>
+        <button class="link" id="btn-cancel-force-modal">${(window.t || ((k)=>k))('cancel')}</button>
         <button class="btn-force-study" id="btn-start-force-study-run" style="padding:10px 22px;font-size:1rem">
-          ⚡ Comenzar Sesión Forzada
+          ⚡ ${(window.t || ((k)=>k))('force_modal_start')}
         </button>
       </div>
     </div>`;
@@ -730,41 +761,41 @@ function openTestModal(scope = 'all') {
     <div class="modal-card stack">
       <div class="row spread" style="align-items:flex-start">
         <div>
-          <h2 style="margin:0;font-size:1.25rem">${isFinalMock ? '🎓 Configurar Final Mock Exam' : '📝 Configurar Test de Examen'}</h2>
-          <div class="muted small" style="margin-top:2px">${esc(isFinalMock ? 'DATA 51000 Practice Final Exam' : scopeName(scope))} · <b>${totalAvailable}</b> preguntas disponibles${isFinalMock ? ' (1 punto c/u)' : ''}</div>
+          <h2 style="margin:0;font-size:1.25rem">${isFinalMock ? '🎓 ' + (window.t || ((k)=>k))('final_mock_name') : '📝 ' + (window.t || ((k)=>k))('test')}</h2>
+          <div class="muted small" style="margin-top:2px">${esc(isFinalMock ? 'DATA 51000 Practice Final Exam' : scopeName(scope))} · <b>${totalAvailable}</b> ${(window.t || ((k)=>k))('questions')}</div>
         </div>
         <button class="link" id="btn-close-modal" style="font-size:1.4rem;line-height:1;padding:0 4px">✕</button>
       </div>
 
       <div style="margin-top:14px">
-        <label class="small muted" style="font-weight:700;display:block;margin-bottom:6px">¿CUÁNTAS PREGUNTAS QUIERES EN EL TEST?</label>
+        <label class="small muted" style="font-weight:700;display:block;margin-bottom:6px">${(window.t || ((k)=>k))('test_modal_how_many')}</label>
         <div class="chip-group">
-          <button class="chip-btn active" data-chip="${totalAvailable}">${isFinalMock ? `⭐ Examen completo (${totalAvailable})` : `⭐ Todas (${totalAvailable})`}</button>
-          ${presets.map((p) => `<button class="chip-btn" data-chip="${p}">${p} preguntas</button>`).join('')}
+          <button class="chip-btn active" data-chip="${totalAvailable}">${isFinalMock ? `⭐ ${(window.t || ((k)=>k))('all')} (${totalAvailable})` : `⭐ ${(window.t || ((k)=>k))('all')} (${totalAvailable})`}</button>
+          ${presets.map((p) => `<button class="chip-btn" data-chip="${p}">${p} ${(window.t || ((k)=>k))('questions')}</button>`).join('')}
         </div>
         
         <div class="row" style="margin-top:10px;gap:8px">
-          <span class="small muted">Número exacto:</span>
+          <span class="small muted">${(window.t || ((k)=>k))('exact_number')}</span>
           <input type="number" id="test-count-input" min="1" max="${totalAvailable}" value="${totalAvailable}" style="width:110px;font-weight:700;text-align:center">
-          <span class="small muted">de ${totalAvailable}</span>
+          <span class="small muted">${(window.t || ((k, p)=>k))('of_total', { total: totalAvailable })}</span>
         </div>
       </div>
 
       <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px" class="stack">
         <label class="row" style="cursor:pointer;gap:10px">
           <input type="checkbox" id="test-immediate-cb" checked>
-          <span class="small"><b>Corrección inmediata:</b> ver respuesta correcta y explicación tras responder cada pregunta</span>
+          <span class="small"><b>${(window.t || ((k)=>k))('test_modal_immediate_title')}</b> ${(window.t || ((k)=>k))('test_modal_immediate_desc')}</span>
         </label>
         <label class="row" style="cursor:pointer;gap:10px">
           <input type="checkbox" id="test-shuffle-cb" checked>
-          <span class="small"><b>Barajar preguntas:</b> orden aleatorio para no memorizar posiciones</span>
+          <span class="small"><b>${(window.t || ((k)=>k))('test_modal_shuffle_title')}</b> ${(window.t || ((k)=>k))('test_modal_shuffle_desc')}</span>
         </label>
       </div>
 
       <div class="row spread" style="margin-top:18px">
-        <button class="link" id="btn-cancel-modal">Cancelar</button>
+        <button class="link" id="btn-cancel-modal">${(window.t || ((k)=>k))('cancel')}</button>
         <button class="btn-test" id="btn-start-test-run" style="padding:10px 22px;font-size:1rem">
-          🚀 Comenzar Test
+          🚀 ${(window.t || ((k)=>k))('test_modal_start')}
         </button>
       </div>
     </div>`;
@@ -882,13 +913,14 @@ function renderTestCard() {
     })
     .join('');
 
+  const tFn = window.t || ((k, p) => k);
   let feedbackHtml = '';
   if (answered) {
     if (tm.immediateFeedback) {
       feedbackHtml = `
         <div class="feedback ${tm.currentCorrect ? 'ok' : 'bad'}" style="margin-top:14px">
           <b class="${tm.currentCorrect ? 'ok' : 'bad'}">
-            ${tm.currentCorrect ? '✓ ¡Respuesta correcta!' : `✗ Incorrecto. Respuesta correcta: ${[].concat(q.answer).map((i) => esc(q.options[i])).join(' · ')}`}
+            ${tm.currentCorrect ? '✓ ' + tFn('feedback_correct') : `✗ ${tFn('feedback_incorrect')} ${[].concat(q.answer).map((i) => esc(q.options[i])).join(' · ')}`}
           </b>
           ${q.explain ? `<p>${rich(q.explain)}</p>` : ''}
         </div>`;
@@ -898,24 +930,25 @@ function renderTestCard() {
     feedbackHtml += `
       <div class="grades one" style="margin-top:14px">
         <button class="primary ${isLast ? 'btn-test' : ''}" id="test-btn-next" style="padding:12px;font-size:1.05rem">
-          ${isLast ? '🏁 Finalizar Test y Ver Mi Nota' : `Siguiente pregunta (${tm.currentIndex + 2} de ${tm.total}) →`}
+          ${isLast ? tFn('test_finish_btn') : tFn('test_next_btn', { cur: tm.currentIndex + 2, total: tm.total })}
         </button>
       </div>`;
   }
 
   $app.innerHTML = `
     <!-- Barra superior de navegación del test -->
-    <div class="row spread header">
-      <button class="link" id="test-btn-exit">← Salir del test</button>
-      <div class="row" style="gap:8px">
-        <span class="tag">📝 Test · ${esc(tm.scope === 'all' ? 'Global' : topicName(tm.scope))}</span>
+    <div class="row spread header" style="flex-wrap:wrap;gap:10px">
+      <button class="link" id="test-btn-exit">${tFn('exit_test_btn')}</button>
+      <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
+        ${window.renderTopControls ? window.renderTopControls() : ''}
+        <span class="tag">📝 ${tFn('test')} · ${esc(tm.scope === 'all' ? tFn('global_title') : (tm.scope === 'final-mock' ? tFn('final_mock_name') : topicName(tm.scope)))}</span>
         <span class="tag" style="background:var(--card);border:1px solid var(--line);color:var(--text)">
-          Pregunta <b>${tm.currentIndex + 1}</b> de <b>${tm.total}</b>
+          ${tFn('question_counter', { cur: tm.currentIndex + 1, total: tm.total })}
         </span>
       </div>
       ${
         tm.immediateFeedback && tm.answers.length > 0
-          ? `<div class="small" title="Aciertos en este test">
+          ? `<div class="small" title="${tFn('accuracy')}">
               <span class="ok" style="font-weight:700">✓ ${correctCount}</span> / <span class="muted">${tm.answers.length}</span>
             </div>`
           : '<div style="width:40px"></div>'
@@ -930,16 +963,16 @@ function renderTestCard() {
     <!-- Tarjeta de Pregunta -->
     <div class="card">
       <div class="row spread small muted" style="margin-bottom:8px">
-        <span>Tema ${q.topic}: ${esc(topicName(q.topic))}</span>
-        <span>Pregunta #${tm.currentIndex + 1}</span>
+        <span>${window.currentLang === 'es' ? 'Tema ' : 'Topic '}${q.topic}: ${esc(topicName(q.topic))}</span>
+        <span>${tFn('question')} #${tm.currentIndex + 1}</span>
       </div>
 
       <div class="question">${questionHtml(q.q)}</div>
-      ${multi ? '<div class="muted small multi-hint">Marca todas las respuestas correctas y pulsa Comprobar</div>' : ''}
+      ${multi ? `<div class="muted small multi-hint">${tFn('multi_hint')}</div>` : ''}
       
       <div class="options">${optionsHtml}</div>
 
-      ${multi && !answered ? `<div class="grades one" style="margin-top:14px"><button class="primary" id="test-check-multi" ${tm.currentSel.length ? '' : 'disabled'}>Comprobar respuesta</button></div>` : ''}
+      ${multi && !answered ? `<div class="grades one" style="margin-top:14px"><button class="primary" id="test-check-multi" ${tm.currentSel.length ? '' : 'disabled'}>${tFn('check_btn')}</button></div>` : ''}
 
       ${feedbackHtml}
     </div>
@@ -947,10 +980,10 @@ function renderTestCard() {
     <div class="kbd">
       ${
         answered
-          ? 'Pulsa Espacio o Enter para continuar'
+          ? tFn('kbd_continue')
           : multi
-          ? 'Pulsa 1–' + tm.currentOrder.length + ' para marcar · Enter para comprobar'
-          : 'Pulsa 1–' + tm.currentOrder.length + ' o ' + LETTERS.slice(0, tm.currentOrder.length).split('').join('/') + ' para responder'
+          ? tFn('kbd_multi', { max: tm.currentOrder.length })
+          : tFn('kbd_single', { max: tm.currentOrder.length, letters: LETTERS.slice(0, tm.currentOrder.length).split('').join('/') })
       }
     </div>`;
 
@@ -1164,13 +1197,17 @@ function showTestResults() {
     })
     .join('');
 
+  const tFn = window.t || ((k, p) => k);
   $app.innerHTML = `
-    <div class="header row spread">
+    <div class="header row spread" style="flex-wrap:wrap;gap:10px">
       <div>
-        <h1>🏁 Resultados del Test</h1>
-        <div class="muted small">${esc(scopeName(tm.scope))} · ${total} preguntas evaluadas</div>
+        <h1>🏁 ${tFn('test_results_title')}</h1>
+        <div class="muted small">${esc(scopeName(tm.scope))} · ${tFn('questions_evaluated', { total })}</div>
       </div>
-      <button class="link" id="btn-results-back">← Volver al panel</button>
+      <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
+        ${window.renderTopControls ? window.renderTopControls() : ''}
+        <button class="link" id="btn-results-back">${tFn('back_to_panel')}</button>
+      </div>
     </div>
 
     <!-- Hero Card con la Nota Final -->
@@ -1179,14 +1216,14 @@ function showTestResults() {
         ${score >= 9 ? '👑 🥇' : score >= 7 ? '👏 🎯' : score >= 5 ? '👍 📚' : '⚠️ 📖'}
       </div>
       <div class="muted small" style="text-transform:uppercase;font-weight:700;letter-spacing:.04em">
-        ${tm.scope === 'final-mock' ? 'Puntuación Final Mock Exam' : 'Tu nota final en el test'}
+        ${tm.scope === 'final-mock' ? tFn('final_mock_name') : tFn('your_final_grade')}
       </div>
       <div class="test-hero-score" style="color:${grade.color}">
         ${score}<span style="font-size:1.5rem;font-weight:600;color:var(--muted)"> / 10</span>
         ${
           tm.scope === 'final-mock' || (tm.total === 40 && tm.questions.every((q) => q.exam === 'final-mock'))
             ? `<div style="font-size:1.15rem;font-weight:700;color:var(--muted);margin-top:4px">
-                 Puntos: <b style="color:${grade.color}">${correctCount}</b> / ${total} puntos (1 punto por pregunta)
+                 ${tFn('points')}: <b style="color:${grade.color}">${correctCount}</b> / ${total} ${tFn('points')} (${tFn('points_each')})
                </div>`
             : ''
         }
@@ -1196,19 +1233,19 @@ function showTestResults() {
       <p style="margin:14px auto 0;max-width:540px;font-size:1.02rem;color:var(--text);line-height:1.5">
         ${
           score >= 9
-            ? '¡Excelente resultado! Dominas con solvencia estas preguntas de la asignatura.'
+            ? tFn('grade_msg_sobresaliente')
             : score >= 7
-            ? '¡Muy buen trabajo! Tienes un nivel notable. Repasa las falladas abajo para alcanzar el 10.'
+            ? tFn('grade_msg_notable')
             : score >= 5
-            ? '¡Has aprobado el test! Revisa con calma los fallos para consolidar tu conocimiento.'
-            : 'No has alcanzado el aprobado (5,0). Revisa las soluciones explicadas abajo y vuelve a intentarlo.'
+            ? tFn('grade_msg_aprobado')
+            : tFn('grade_msg_suspenso')
         }
       </p>
 
       <div class="row" style="justify-content:center;gap:10px;margin-top:20px;flex-wrap:wrap">
-        <button class="primary btn-test" id="btn-repeat-test">🔄 Repetir este test</button>
-        <button id="btn-new-test">📝 Hacer otro test...</button>
-        <button id="btn-finish-dashboard">🏠 Ir al panel</button>
+        <button class="primary btn-test" id="btn-repeat-test">${tFn('repeat_test_btn')}</button>
+        <button id="btn-new-test">${tFn('another_test_btn')}</button>
+        <button id="btn-finish-dashboard">${tFn('go_to_panel_btn')}</button>
       </div>
     </div>
 
@@ -1216,15 +1253,15 @@ function showTestResults() {
     <div class="stats" style="margin-bottom:18px">
       <div class="card stat">
         <b class="ok">${correctCount} <small style="font-size:.9rem;color:var(--muted)">/ ${total}</small></b>
-        <span class="muted small">aciertos (${accuracyPct}%)</span>
+        <span class="muted small">${tFn('accuracy')} (${accuracyPct}%)</span>
       </div>
       <div class="card stat">
         <b class="${wrongCount > 0 ? 'bad' : 'ok'}">${wrongCount}</b>
-        <span class="muted small">fallos</span>
+        <span class="muted small">${tFn('incorrect_label')}</span>
       </div>
       <div class="card stat">
         <b>${durationText}</b>
-        <span class="muted small">tiempo (${avgPerQuestion}s/preg)</span>
+        <span class="muted small">${tFn('study_time_label')} (${avgPerQuestion}s/preg)</span>
       </div>
     </div>
 
@@ -1547,15 +1584,17 @@ function renderRankingView(allUsersData) {
     })
     .join('');
 
+  const tFn = window.t || ((k, p) => k);
   $app.innerHTML = `
     <div class="header row spread" style="flex-wrap:wrap;gap:10px">
       <div>
-        <h1>🏆 Ranking de la Clase</h1>
-        <div class="muted small">${esc(scopeLabel)} · predicción de nota en el examen</div>
+        <h1>🏆 ${tFn('ranking_title')}</h1>
+        <div class="muted small">${esc(scopeLabel)} · ${tFn('ranking_sub')}</div>
       </div>
-      <div class="row" style="gap:8px;flex-wrap:wrap">
-        ${state.user ? '<button class="btn-ranking" id="btn-ranking-stats">📊 Estadísticas</button>' : ''}
-        <button class="link" id="rank-back-btn">← Volver al estudio</button>
+      <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center">
+        ${window.renderTopControls ? window.renderTopControls() : ''}
+        ${state.user ? `<button class="btn-ranking" id="btn-ranking-stats">📊 ${tFn('nav_stats')}</button>` : ''}
+        <button class="link" id="rank-back-btn">${tFn('back_to_study')}</button>
       </div>
     </div>
 
@@ -1699,24 +1738,32 @@ function nextCard() {
 }
 
 function topBar() {
+  const tFn = window.t || ((k, p) => k);
   const c = SRS.counts(scopeIds(state.scope), state.user.cards);
   const isForced = !!(state.forceStudy && state.forceStudy.active);
-  return `<div class="row spread header">
-    <button class="link" id="back">← Volver</button>
-    <div class="row" style="gap:6px;align-items:center">
-      <span class="tag">${esc(state.scope === 'all' ? 'Global' : (state.scope === 'final-mock' ? 'Final Mock Exam' : 'Tema ' + state.scope))}</span>
-      ${isForced ? '<span class="tag tag-forced">⚡ Sesión Forzada</span>' : ''}
+  const scopeLabel = state.scope === 'all'
+    ? tFn('global_title')
+    : (state.scope === 'final-mock' ? tFn('final_mock_name') : (window.currentLang === 'es' ? 'Tema ' : 'Topic ') + state.scope);
+
+  return `<div class="row spread header" style="flex-wrap:wrap;gap:10px">
+    <div class="row" style="gap:8px;align-items:center">
+      <button class="link" id="back">${tFn('back')}</button>
+      <span class="tag">${esc(scopeLabel)}</span>
+      ${isForced ? `<span class="tag tag-forced">${tFn('tag_forced_session')}</span>` : ''}
     </div>
-    ${
-      isForced
-        ? `<div class="small muted" style="font-weight:600">
-            Pregunta <b style="color:var(--text)">${state.forceStudy.currentIndex + 1}</b> de <b>${state.forceStudy.total}</b>
-           </div>`
-        : state.practice
-        ? '<span class="muted small">práctica</span>'
-        : `<div class="counts" title="Nuevas · Aprendiendo · Repaso">
-      <span class="n-new">${c.new}</span><span class="n-learn">${c.dueLearn}</span><span class="n-review">${c.dueReview}</span></div>`
-    }
+    <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
+      ${window.renderTopControls ? window.renderTopControls() : ''}
+      ${
+        isForced
+          ? `<div class="small muted" style="font-weight:600">
+              ${tFn('question')} <b style="color:var(--text)">${state.forceStudy.currentIndex + 1}</b> ${tFn('of_total', { total: state.forceStudy.total })}
+             </div>`
+          : state.practice
+          ? `<span class="muted small">${tFn('practice_label')}</span>`
+          : `<div class="counts" title="${tFn('bar_legend')}">
+        <span class="n-new">${c.new}</span><span class="n-learn">${c.dueLearn}</span><span class="n-review">${c.dueReview}</span></div>`
+      }
+    </div>
   </div>`;
 }
 
@@ -1743,13 +1790,14 @@ function renderCard() {
   const isForced = !!(state.forceStudy && state.forceStudy.active);
   const isForcedNoReschedule = isForced && !state.forceStudy.reschedule;
 
+  const tFn = window.t || ((k, p) => k);
   let after = '';
   if (answered) {
     const fb = `<div class="feedback ${correct ? 'ok' : 'bad'}">
-      <b class="${correct ? 'ok' : 'bad'}">${correct ? '✓ ¡Correcto!' : `✗ Incorrecto. ${[].concat(q.answer).length > 1 ? 'Eran' : 'Era'}: ${[].concat(q.answer).map((i) => esc(q.options[i])).join(' · ')}`}</b>
+      <b class="${correct ? 'ok' : 'bad'}">${correct ? '✓ ' + tFn('feedback_correct') : `✗ ${tFn('feedback_incorrect')} ${[].concat(q.answer).length > 1 ? tFn('feedback_were') : tFn('feedback_was')}: ${[].concat(q.answer).map((i) => esc(q.options[i])).join(' · ')}`}</b>
       ${q.explain ? `<p>${rich(q.explain)}</p>` : ''}</div>`;
     if (state.practice || isForcedNoReschedule) {
-      after = fb + `<div class="grades one"><button class="primary" data-next>Siguiente</button></div>`;
+      after = fb + `<div class="grades one"><button class="primary" data-next>${tFn('next_btn')}</button></div>`;
     } else {
       const pv = SRS.preview(card);
       const ratings = correct ? ['again', 'hard', 'good', 'easy'] : ['again'];
@@ -1773,29 +1821,29 @@ function renderCard() {
           <div class="banner" style="background:color-mix(in srgb, #7c3aed 10%, var(--card));border:1px solid color-mix(in srgb, #7c3aed 30%, transparent);color:var(--text)">
             ${
               state.forceStudy.reschedule
-                ? '⚡ <b>Sesión forzada con reprogramación SRS:</b> tus respuestas recalculan los intervalos espaciados adelantando el aprendizaje en tu memoria.'
-                : '⚡ <b>Sesión forzada (solo repaso):</b> tus respuestas cuentan en el historial sin modificar las fechas ni intervalos programados.'
+                ? tFn('forced_banner_resched')
+                : tFn('forced_banner_no_resched')
             }
           </div>`
         : state.practice
-        ? '<div class="banner">Modo práctica: tus respuestas cuentan en el historial, pero no cambian cuándo vuelve cada tarjeta.</div>'
+        ? `<div class="banner">${tFn('practice_banner')}</div>`
         : ''
     }
     <div class="card">
       <div class="row spread small muted"><span>${esc(topicName(q.topic))}</span>
-        <span>${isNew ? '<span class="n-new">nueva</span>' : SRS.isLearning(card) ? '<span class="n-learn">aprendiendo</span>' : '<span class="n-review">repaso</span>'}</span></div>
+        <span>${isNew ? `<span class="n-new">${tFn('new_label')}</span>` : SRS.isLearning(card) ? `<span class="n-learn">${tFn('learning_label')}</span>` : `<span class="n-review">${tFn('review_label')}</span>`}</span></div>
       <div class="question">${questionHtml(q.q)}</div>
-      ${multi ? '<div class="muted small multi-hint">Marca todas las correctas</div>' : ''}
+      ${multi ? `<div class="muted small multi-hint">${tFn('multi_hint')}</div>` : ''}
       <div class="options">${options}</div>
-      ${multi && !answered ? `<div class="grades one"><button class="primary" data-check ${sel.length ? '' : 'disabled'}>Comprobar</button></div>` : ''}
+      ${multi && !answered ? `<div class="grades one"><button class="primary" data-check ${sel.length ? '' : 'disabled'}>${tFn('check_btn')}</button></div>` : ''}
       ${after}
     </div>
     <div class="kbd">${
       answered
         ? correct && !state.practice
-          ? 'Teclas: 1 Otra vez · 2 Difícil · 3/espacio Bien · 4 Fácil'
-          : 'Espacio para continuar'
-        : `Teclas: 1–${order.length} o ${LETTERS.slice(0, order.length).split('').join('/')}${multi ? ' para marcar · Enter para comprobar' : ''}`
+          ? tFn('kbd_rating')
+          : tFn('kbd_continue')
+        : `${tFn('kbd_single', { max: order.length, letters: LETTERS.slice(0, order.length).split('').join('/') })}${multi ? ' · Enter: ' + tFn('check_btn') : ''}`
     }</div>`;
 
   $app.querySelector('#back').onclick = () => {
@@ -1888,20 +1936,21 @@ async function rate(rating) {
 }
 
 function showDone() {
+  const tFn = window.t || ((k, p) => k);
   const c = SRS.counts(scopeIds(state.scope), state.user.cards);
   const wait = c.nextDue ? SRS.formatDelay(c.nextDue - Date.now()) : null;
   $app.innerHTML = `${topBar()}
     <div class="card" style="text-align:center">
       <div style="font-size:2.5rem">🎉</div>
-      <h2 style="margin-top:6px">¡Al día con ${esc(scopeName(state.scope))}!</h2>
-      <p class="muted">No te toca ninguna tarjeta ahora.${wait ? ` La próxima vuelve en <b>${wait}</b>.` : ''}</p>
+      <h2 style="margin-top:6px">${tFn('all_caught_up', { scope: esc(scopeName(state.scope)) })}</h2>
+      <p class="muted">${tFn('no_cards_due')}${wait ? ` ${tFn('next_card_due', { time: wait })}` : ''}</p>
       <div class="row" style="justify-content:center;flex-wrap:wrap;gap:10px">
-        <button class="primary btn-force-study" id="force-study-btn">⚡ Forzar sesión de estudio</button>
-        <button id="practice">Practicar al azar</button>
-        <button id="home">Volver al panel</button>
+        <button class="primary btn-force-study" id="force-study-btn">${tFn('force_session')}</button>
+        <button id="practice">${tFn('practice_random')}</button>
+        <button id="home">${tFn('back_to_panel')}</button>
       </div>
       <p class="muted small" style="margin-top:14px;max-width:520px;margin-left:auto;margin-right:auto;line-height:1.5">
-        <b>⚡ Forzar sesión:</b> adelanta tarjetas que vencerán próximamente o repasa tus puntos débiles recalculando y consolidando tus intervalos de memoria.
+        ${tFn('force_modal_sub')}
       </p>
     </div>`;
   $app.querySelector('#back').onclick = showDashboard;
@@ -2061,3 +2110,28 @@ saved ? openUser(saved) : showUsers();
 window.startStudy = startStudy;
 window.startForceStudy = startForceStudy;
 window.openForceStudyModal = openForceStudyModal;
+
+// ---------------- Dynamic UI Re-render on Lang / Theme Change ----------------
+function refreshCurrentView() {
+  if (state.testMode && state.testMode.active) {
+    if (state.testMode.showResults) {
+      showTestResults();
+    } else {
+      renderTestCard();
+    }
+  } else if (state.forceStudy && state.forceStudy.active) {
+    renderCard();
+  } else if (state.current) {
+    renderCard();
+  } else if (document.querySelector('.ranking-list') || document.querySelector('.podium')) {
+    showRanking();
+  } else if (document.querySelector('.stats-toggles') || document.querySelector('.kpis')) {
+    if (window.renderStats) window.renderStats();
+    else showDashboard();
+  } else if (state.user) {
+    showDashboard();
+  } else {
+    showUsers();
+  }
+}
+window.refreshCurrentView = refreshCurrentView;
