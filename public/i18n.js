@@ -96,6 +96,7 @@ const I18N = {
     dm_t5: 'Tema 5 · PageRank, HITS y grafos web',
     dm_t6: 'Tema 6 · Sistemas de recomendación',
     dm_t7: 'Tema 7 · Publicidad online y algoritmo BALANCE',
+    dv_t1: 'Tema 1 · Fundamentos de la visualización y semiótica',
     final_mock_name: 'Final Mock Exam',
     final_mock_desc: 'Examen oficial de práctica de 40 preguntas · 1 punto cada una',
 
@@ -409,6 +410,7 @@ const I18N = {
     dm_t5: 'Topic 5 · PageRank, HITS & Web Graphs',
     dm_t6: 'Topic 6 · Recommender Systems',
     dm_t7: 'Topic 7 · Online Advertising & BALANCE Algorithm',
+    dv_t1: 'Topic 1 · Visualization Foundations & Semiotics',
     final_mock_name: 'Final Mock Exam',
     final_mock_desc: 'Official 40-question practice final · 1 point each',
 
